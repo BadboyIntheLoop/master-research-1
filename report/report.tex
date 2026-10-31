@@ -1,0 +1,240 @@
+%==============================================================
+%  Báo cáo môn học — Chuyên đề nghiên cứu 1
+%  Đề tài: Tìm hiểu điện toán lượng tử cơ bản
+%          và bài toán biên dịch mạch lượng tử
+%
+%  HOW TO COMPILE (Overleaf or local):
+%   Requires LuaLaTeX (Vietnamese Unicode text + fontspec).
+%   latexmk   — latexmk -pdflua -interaction=nonstopmode -outdir=build report.tex
+%   Overleaf  — Menu > Compiler > LuaLaTeX
+%
+%  Cấu trúc:
+%   report.tex            preamble, trang bìa, tóm tắt, mục lục
+%   sections/*.tex        nội dung từng chương
+%   imgs/                 logo trường
+%==============================================================
+\documentclass[11pt,a4paper]{article}
+
+% ---- Layout -------------------------------------------------
+\usepackage[top=1in,bottom=1in,left=1.1in,right=1.1in]{geometry}
+\usepackage{setspace}
+\setstretch{1.15}
+
+% ---- Core packages ------------------------------------------
+\usepackage{fontspec}
+\setmainfont{lmroman10}[
+  Extension = .otf,
+  UprightFont = *-regular,
+  BoldFont = *-bold,
+  ItalicFont = *-italic,
+  BoldItalicFont = *-bolditalic,
+]
+\setmonofont{lmmono10}[
+  Extension = .otf,
+  UprightFont = *-regular,
+  ItalicFont = *-italic,
+  BoldFont = lmmonolt10-bold,
+  Scale = 0.95,
+]
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{braket}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{graphicx}
+\graphicspath{{imgs/}{./imgs/}}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, shapes.geometric, calc, quantikz2}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage{enumitem}
+\usepackage{parskip}
+\usepackage{listings}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage[most]{tcolorbox}
+
+% ---- Colors (mirrored from cv-report) -----------------------
+\definecolor{ProbRed}{HTML}{C0392B}
+\definecolor{OkGreen}{HTML}{1E8449}
+\definecolor{AccentBlue}{HTML}{2C6FBB}
+\definecolor{OrangeYellow}{HTML}{D4890B}
+\definecolor{Purple}{HTML}{8E44AD}
+\definecolor{CodeBg}{HTML}{F5F7FA}
+
+% ---- TikZ styles --------------------------------------------
+\tikzset{
+  box/.style={rectangle, rounded corners, draw=#1, thick, fill=#1!10,
+              minimum width=2.4cm, minimum height=0.7cm,
+              font=\small, align=center},
+  box/.default=AccentBlue,
+  arr/.style={-{Stealth[length=2mm]}, thick},
+}
+
+% ---- Hyperref setup -----------------------------------------
+\hypersetup{
+  colorlinks=true,
+  linkcolor=AccentBlue,
+  citecolor=AccentBlue,
+  urlcolor=AccentBlue,
+  pdftitle={Điện toán lượng tử cơ bản và biên dịch mạch lượng tử},
+  pdfauthor={Nguyễn Tất Chung},
+}
+
+% ---- Vietnamese names for floats / sections -----------------
+\renewcommand{\contentsname}{Mục lục}
+\renewcommand{\abstractname}{Tóm tắt}
+\renewcommand{\figurename}{Hình}
+\renewcommand{\tablename}{Bảng}
+\renewcommand{\refname}{Tài liệu tham khảo}
+\renewcommand{\listfigurename}{Danh sách hình vẽ}
+\renewcommand{\listtablename}{Danh sách bảng}
+\renewcommand{\lstlistingname}{Đoạn mã}
+\floatname{algorithm}{Thuật toán}
+\renewcommand{\algorithmicrequire}{\textbf{Đầu vào:}}
+\renewcommand{\algorithmicensure}{\textbf{Đầu ra:}}
+
+\theoremstyle{definition}
+\newtheorem{definition}{Định nghĩa}[section]
+\newtheorem{theorem}{Định lý}[section]
+\newtheorem{example}{Ví dụ}[section]
+
+% ---- Code listings (Python / Qiskit) ------------------------
+\lstset{
+  language=Python,
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{AccentBlue},
+  commentstyle=\color{OkGreen}\itshape,
+  stringstyle=\color{ProbRed},
+  backgroundcolor=\color{CodeBg},
+  frame=single, rulecolor=\color{black!15},
+  breaklines=true, columns=fullflexible, keepspaces=true,
+  showstringspaces=false, xleftmargin=4pt, xrightmargin=4pt,
+  aboveskip=6pt, belowskip=6pt,
+}
+
+% ---- Callout boxes ------------------------------------------
+\newtcolorbox{keybox}[1][Ghi nhớ]{
+  enhanced, breakable, colback=AccentBlue!6, colframe=AccentBlue,
+  fonttitle=\bfseries\small, title=#1, boxrule=0.6pt, arc=2pt,
+  left=6pt, right=6pt, top=4pt, bottom=4pt}
+\newtcolorbox{warnbox}[1][Lưu ý]{
+  enhanced, breakable, colback=ProbRed!5, colframe=ProbRed,
+  fonttitle=\bfseries\small, title=#1, boxrule=0.6pt, arc=2pt,
+  left=6pt, right=6pt, top=4pt, bottom=4pt}
+
+% ---- Shorthands ---------------------------------------------
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\cx}{\code{cx}}
+\newcommand{\Tr}{\mathrm{Tr}}
+
+% ---- Title (metadata only; cover page below is custom) -------
+\title{Tìm hiểu điện toán lượng tử cơ bản và bài toán biên dịch mạch lượng tử}
+\author{Nguyễn Tất Chung}
+\date{\today}
+
+\begin{document}
+
+%==============================================================
+% Trang bìa (theo mẫu Trường Đại học Phenikaa)
+%==============================================================
+\begin{titlepage}
+\thispagestyle{empty}
+\setlength{\fboxsep}{1cm}
+\setlength{\fboxrule}{0.6pt}
+\noindent\fbox{%
+  \begin{minipage}[c][\dimexpr\textheight-2\fboxsep-2\fboxrule\relax][c]{\dimexpr\textwidth-2\fboxsep-2\fboxrule\relax}
+  \begin{center}
+    {\bfseries BỘ GIÁO DỤC VÀ ĐÀO TẠO}\\
+    {\bfseries TRƯỜNG ĐẠI HỌC PHENIKAA}\\[2pt]
+    \rule{3.5cm}{0.4pt}
+
+    \vfill
+
+    \includegraphics[width=0.55\linewidth]{phenikaa-uni-symbol.png}
+
+    \vfill
+
+    {\LARGE\bfseries BÁO CÁO MÔN HỌC}
+
+    \vspace{2.5em}
+
+    {\Large\bfseries TÊN ĐỀ TÀI:}\\[0.8em]
+    {\large\bfseries TÌM HIỂU ĐIỆN TOÁN LƯỢNG TỬ CƠ BẢN\\
+    VÀ BÀI TOÁN BIÊN DỊCH MẠCH LƯỢNG TỬ}\\[0.6em]
+    {\normalsize\itshape Fundamentals of Quantum Computing\\
+    and Quantum Circuit Compilation}
+
+    \vfill
+
+    \begin{tabular}{@{}l@{}}
+      Học phần: \quad Chuyên đề nghiên cứu 1\\
+      % Bậc đào tạo: \quad Cao học (Thạc sĩ)
+    \end{tabular}
+
+    \vspace{2em}
+
+    \begin{tabular}{@{}ll@{}}
+      Học viên thực hiện: & Nguyễn Tất Chung \\[0.3em]
+      Giảng viên hướng dẫn: & Phạm Văn Cảnh \\
+                            & Nguyễn Văn Duy
+    \end{tabular}
+
+    \vfill
+
+    {\bfseries Hà Nội, tháng 10 năm 2026}
+  \end{center}
+  \end{minipage}%
+}
+\end{titlepage}
+
+%==============================================================
+\begin{abstract}
+Máy tính lượng tử hứa hẹn giải một số bài toán nhanh hơn máy tính cổ điển, nhưng các thiết bị
+hiện nay (thời kỳ \emph{NISQ} -- Noisy Intermediate-Scale Quantum) chỉ hỗ trợ một tập cổng nhỏ,
+chỉ cho phép cổng hai qubit giữa những cặp qubit kề nhau, và mọi cổng đều có sai số. Khoảng cách
+giữa mạch lý tưởng mà người lập trình viết và mạch thực sự chạy trên phần cứng được lấp đầy bởi
+\textbf{quantum compiler} (trong Qiskit gọi là \emph{transpiler}). Báo cáo này trình bày một lộ
+trình tự học có hệ thống, đi từ nền tảng tới bài toán nghiên cứu: (i) qubit, ký hiệu Dirac (ket),
+superposition, phép đo và entanglement; (ii) các cổng lượng tử một và nhiều qubit; (iii) các thuật
+toán lượng tử cơ bản xây dựng trên cơ chế \emph{phase kickback} -- Deutsch--Jozsa,
+Bernstein--Vazirani, Grover -- cùng teleportation và superdense coding; (iv) quá trình biên dịch mạch
+gồm layout, routing, synthesis và tối ưu, được nhìn như một \textbf{bài toán tối ưu}. Phần cuối
+phát biểu qubit routing thành một Markov decision process, hiện thực thành môi trường
+\code{gymnasium} có kiểm tra tính đúng đắn, và dựng một thang mốc so sánh trung thực. Các thực
+nghiệm với Qiskit~2.5 cho thấy compiler ảnh hưởng mạnh tới chất lượng mạch: topology quyết định số
+SWAP (75 trên \emph{line} so với 25 trên \emph{grid} cho cùng mạch 9 qubit), layout tốt giảm
+16\% số SWAP, thuật toán \emph{gridsynth} cần ít cổng $T$ hơn Solovay--Kitaev hơn 7 lần, và một
+policy tham lam đơn giản vẫn kém \code{SabreSwap} 25\% -- khoảng trống mà các phương pháp
+reinforcement learning trong Chuyên đề nghiên cứu 2 sẽ nhắm tới.
+
+\medskip
+\noindent\textbf{Từ khoá:} quantum computing, qubit, quantum gate, quantum algorithm, quantum
+circuit compilation, transpiler, qubit routing, SABRE, T-count, reinforcement learning, Qiskit.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+\input{sections/01_mo_dau}
+\input{sections/02_co_so}
+\input{sections/03_cong_luong_tu}
+\input{sections/04_thuat_toan}
+\input{sections/05_compilation}
+\input{sections/06_mdp}
+\input{sections/07_thuc_nghiem}
+\input{sections/08_ket_luan}
+
+\clearpage
+\appendix
+\input{sections/appendix}
+
+\clearpage
+\input{sections/references}
+
+\end{document}

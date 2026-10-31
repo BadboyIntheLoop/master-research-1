@@ -1,0 +1,223 @@
+%==============================================================
+\section{Các thuật toán lượng tử cơ bản}
+\label{sec:algorithms}
+%==============================================================
+
+Gần như mọi thuật toán lượng tử cơ bản -- Deutsch--Jozsa, Bernstein--Vazirani, Grover, phase
+estimation -- đều dùng chung một thủ thuật:
+\begin{quote}
+  \emph{Ghi câu trả lời của một hàm vào \textbf{phase} của amplitude, rồi dùng $H$ để biến phase thành
+  bit đọc được.}
+\end{quote}
+Thủ thuật này gọi là \textbf{phase kickback}. Chương này xây dựng nó từ đầu, sau đó áp dụng lần lượt
+vào các bài toán với độ tổng quát tăng dần, và kết thúc bằng hai giao thức dùng entanglement làm tài
+nguyên chính.
+
+\subsection{Oracle và phase kickback}
+
+\paragraph{Oracle.} Cho hàm $f:\{0,1\}^n\to\{0,1\}$ mà ta chỉ được \emph{gọi} chứ không được xem bên
+trong (giống gọi một API). Để đưa $f$ vào mạch lượng tử, nó phải được đóng gói thành một cổng unitary
+-- và unitary thì phải khả nghịch. Phép $\ket{x}\mapsto\ket{f(x)}$ nói chung không khả nghịch, nên
+cách chuẩn là thêm một qubit phụ (\textbf{ancilla}) và ghi kết quả bằng XOR:
+\begin{equation}
+  U_f\,\ket{x}\ket{y} = \ket{x}\ket{y\oplus f(x)}.
+  \label{eq:oracle}
+\end{equation}
+Dạng này gọi là \textbf{bit-flip oracle} và luôn khả nghịch ($U_f^2 = I$).
+
+\paragraph{Phase kickback.} Đặt ancilla ở $\ket{-}$ thay vì $\ket{0}$. Vì $\ket{-}$ là vector riêng
+của $X$ với trị riêng $-1$, và oracle chính là ``áp $X$ lên ancilla khi $f(x)=1$'', ta có
+\begin{equation}
+  U_f\,\ket{x}\ket{-} = (-1)^{f(x)}\,\ket{x}\ket{-}.
+  \label{eq:kickback}
+\end{equation}
+Ancilla không đổi; nó chỉ ``đá ngược'' (kick back) dấu $(-1)^{f(x)}$ vào qubit dữ liệu. Câu trả lời
+của $f$ đã chuyển từ \emph{bit của ancilla} sang \emph{phase của qubit dữ liệu}. Khi qubit dữ liệu ở
+superposition, một lần gọi oracle ghi dấu lên \emph{mọi} giá trị $x$ cùng lúc:
+\begin{equation}
+  U_f\,\ket{+}\ket{-} = \tfrac{1}{\sqrt2}\Big((-1)^{f(0)}\ket{0} + (-1)^{f(1)}\ket{1}\Big)\ket{-}.
+\end{equation}
+
+\subsection{Bài toán Deutsch và Deutsch--Jozsa}
+
+\paragraph{Deutsch.} Cho $f:\{0,1\}\to\{0,1\}$, hỏi $f$ là \emph{hằng} ($f(0)=f(1)$) hay \emph{cân
+bằng} ($f(0)\neq f(1)$)? Cổ điển phải gọi $f$ hai lần. Theo phương trình trên, qubit dữ liệu sau
+oracle là $\pm\ket{+}$ nếu $f$ hằng và $\pm\ket{-}$ nếu $f$ cân bằng; áp $H$ rồi đo cho đúng
+$f(0)\oplus f(1)$ -- chỉ với \textbf{một} lần gọi \cite{deutsch1985}.
+
+\begin{figure}[h]
+  \centering
+  \begin{quantikz}
+    \lstick{$x: \ket{0}$} & \gate{H} & & \gate[2]{U_f} & \gate{H} & \meter{} & \setwiretype{c} \rstick{$f(0)\oplus f(1)$} \\
+    \lstick{$\text{anc}: \ket{0}$} & \gate{X} & \gate{H} & & & &
+  \end{quantikz}
+  \caption{Mạch Deutsch. Ancilla được đưa về $\ket{-}$ bằng $X$ rồi $H$; chỉ đo qubit dữ liệu.}
+  \label{fig:deutsch}
+\end{figure}
+
+\paragraph{Deutsch--Jozsa.} Mở rộng cho $f:\{0,1\}^n\to\{0,1\}$ với lời hứa $f$ hoặc hằng, hoặc cân
+bằng (đúng một nửa đầu vào cho 0) \cite{deutsch1992}. Cổ điển, trong trường hợp xấu nhất cần
+$2^{n-1}+1$ lần gọi để chắc chắn. Mạch lượng tử giống hệt Deutsch với $n$ qubit dữ liệu:
+$H^{\otimes n}$ -- oracle -- $H^{\otimes n}$ -- đo. Kết quả \textbf{toàn 0} nghĩa là $f$ hằng, bất
+kỳ kết quả nào khác nghĩa là $f$ cân bằng. Lý do: amplitude của $\ket{0^n}$ sau cùng là
+$\frac{1}{2^n}\sum_x(-1)^{f(x)}$, bằng $\pm1$ nếu $f$ hằng và bằng $0$ nếu $f$ cân bằng.
+
+\begin{warnbox}
+Chỉ đo qubit dữ liệu. Nếu dùng \code{measure\_all()}, ancilla (đang ở $\ket{-}$) cũng bị đo và cho bit
+ngẫu nhiên, làm chuỗi counts có một bit ``rác'' khiến ta tưởng thuật toán sai.
+\end{warnbox}
+
+\subsection{Bernstein--Vazirani}
+
+\paragraph{Bài toán.} Có chuỗi bí mật $s\in\{0,1\}^n$; oracle tính
+$f(x) = s\cdot x \bmod 2 = s_0x_0\oplus\dots\oplus s_{n-1}x_{n-1}$. Tìm $s$ \cite{bernstein1997}.
+
+Cổ điển, mỗi lần gọi (với $x$ là một vector đơn vị) chỉ lấy được \textbf{một} bit của $s$, nên cần
+$n$ lần. Lượng tử dùng đúng mạch Deutsch--Jozsa. Oracle được hiện thực bằng một cổng CX từ qubit $i$
+vào ancilla cho mỗi $i$ có $s_i=1$. Sau oracle, phase kickback cho trạng thái
+\begin{equation}
+  \frac{1}{\sqrt{2^n}}\sum_{x}(-1)^{s\cdot x}\ket{x} = H^{\otimes n}\ket{s}.
+\end{equation}
+Vì $H^{\otimes n}$ là nghịch đảo của chính nó, lớp $H^{\otimes n}$ cuối cùng đưa trạng thái về đúng
+$\ket{s}$: đo ra $s$ với xác suất \textbf{100\%}, chỉ sau \textbf{một} lần gọi. Đây là ví dụ gọn nhất
+về \emph{interference có chủ đích}: các amplitude sai triệt tiêu nhau, amplitude đúng cộng dồn lại.
+
+\begin{keybox}[Lợi thế ở đây đo bằng gì?]
+Thước đo là \textbf{số lần gọi oracle} (query complexity), không phải tổng số cổng: bên trong oracle
+BV vẫn có tới $n$ cổng CX. Deutsch--Jozsa và BV là các bài toán được \emph{thiết kế} để lợi thế lộ ra;
+chúng không nói lên rằng máy lượng tử nhanh hơn trong các bài toán thực tế.
+\end{keybox}
+
+\subsection{Thuật toán Grover}
+
+Khác với hai bài toán trên, Grover giải một bài toán \textbf{hoàn toàn tổng quát}: tìm kiếm không cấu
+trúc \cite{grover1996}. Có $N = 2^n$ khả năng, trong đó $M$ khả năng là ``nghiệm''; ta chỉ có oracle
+trả lời ``đây có phải nghiệm không''. Cổ điển cần trung bình $N/2$ lần thử; Grover cần khoảng
+$\frac{\pi}{4}\sqrt{N/M}$ lần -- lợi thế \textbf{bình phương}.
+
+\paragraph{Phase oracle.} Đánh dấu nghiệm bằng dấu âm:
+$U_\omega\ket{x} = -\ket{x}$ nếu $x=\omega$, ngược lại giữ nguyên. Hiện thực: áp $X$ lên các qubit
+bằng 0 trong $\omega$, áp một cổng multi-controlled $Z$, rồi áp $X$ trả lại.
+
+\paragraph{Diffuser.} Dấu âm một mình không đổi xác suất ($|-a|^2 = |a|^2$). Bước \textbf{diffuser}
+$D = H^{\otimes n}(2\ket{0}\bra{0}-I)H^{\otimes n}$ thực hiện phép \emph{lật quanh giá trị trung
+bình} (inversion about the mean): $a_k \mapsto 2\bar a - a_k$. Amplitude âm nằm dưới trung bình rất xa
+nên sau khi lật nhảy lên trên trung bình -- tức được khuếch đại.
+
+\begin{figure}[h]
+  \centering
+  \begin{quantikz}[row sep=0.25cm]
+    \lstick[3]{$\ket{0}^{\otimes n}$} & \gate{H} & \gate[3]{U_\omega}\gategroup[3,steps=4,style={dashed,rounded corners,fill=AccentBlue!8,inner xsep=2pt},background,label style={label position=above,anchor=south,yshift=-0.1cm}]{lặp $k \approx \frac{\pi}{4}\sqrt{N/M}$ lần: oracle + diffuser} & \gate{H} & \gate[3]{2\ket{0}\bra{0}-I} & \gate{H} & \meter{} \\
+    & \gate{H} & & \gate{H} & & \gate{H} & \meter{} \\
+    & \gate{H} & & \gate{H} & & \gate{H} & \meter{}
+  \end{quantikz}
+  \caption{Cấu trúc thuật toán Grover: khởi tạo superposition đều, rồi lặp $k$ vòng gồm oracle
+  $U_\omega$ và diffuser.}
+  \label{fig:grover}
+\end{figure}
+
+\paragraph{Phân tích hình học.} Trạng thái luôn nằm trong mặt phẳng hai chiều sinh bởi ``tổng các
+nghiệm'' và ``tổng các phi nghiệm''. Mỗi vòng Grover (oracle + diffuser) là một phép \emph{quay} góc
+$2\theta$ về phía nghiệm, với $\sin\theta = \sqrt{M/N}$. Sau $k$ vòng,
+\begin{equation}
+  P(k) = \sin^2\big((2k+1)\theta\big), \qquad
+  k_{\text{opt}} \approx \frac{\pi}{4}\sqrt{\frac{N}{M}}.
+  \label{eq:grover}
+\end{equation}
+Công thức~\eqref{eq:grover} nói hai điều: số vòng tối ưu tăng như $O(\sqrt N)$, và \textbf{lặp nhiều
+hơn không tốt hơn} -- quá $k_{\text{opt}}$, trạng thái quay vượt qua nghiệm và xác suất giảm
+(Hình~\ref{fig:grover-prob}). Với $n=3$, $M=1$: $k_{\text{opt}}=2$ và $P\approx 94.5\%$, khớp với
+kết quả mô phỏng trong notebook.
+
+\begin{figure}[h]
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[
+      width=0.78\linewidth, height=5.2cm,
+      xlabel={Số vòng Grover $k$}, ylabel={$P(k)$},
+      xmin=-0.5, xmax=12.5, ymin=0, ymax=1.08,
+      xtick={0,1,...,12}, ytick={0,0.25,0.5,0.75,1},
+      grid=major, grid style={black!10},
+      legend style={at={(0.5,1.03)}, anchor=south, legend columns=2, font=\footnotesize},
+    ]
+      \addplot[ybar, bar width=7pt, fill=AccentBlue!60, draw=AccentBlue,
+               samples at={0,1,...,12}]
+        {sin((2*x+1)*asin(0.25))^2};
+      \addlegendentry{$N=16,\ M=1$}
+      \addplot[only marks, mark=*, ProbRed, samples at={0,1,...,12}]
+        {sin((2*x+1)*asin(sqrt(4/16)))^2};
+      \addlegendentry{$N=16,\ M=4$}
+      \draw[dashed, OkGreen, thick] (axis cs:3,0) -- (axis cs:3,1.05);
+      \node[OkGreen, font=\footnotesize, anchor=west, fill=white, inner sep=1pt] at (axis cs:3.15,0.12) {$k_{\text{opt}}=3$};
+    \end{axis}
+  \end{tikzpicture}
+  \caption{Xác suất tìm được nghiệm theo số vòng Grover (phương trình~\eqref{eq:grover}). Với một
+  nghiệm trong 16 phần tử, xác suất đạt cực đại $96\%$ tại $k=3$ rồi giảm; với 4 nghiệm, số vòng
+  tối ưu chỉ là 1.}
+  \label{fig:grover-prob}
+\end{figure}
+
+\subsection{No-cloning, teleportation và superdense coding}
+
+\paragraph{Định lý no-cloning.} Không tồn tại unitary nào sao chép được một trạng thái tuỳ ý:
+$\ket{\psi}\ket{0}\mapsto\ket{\psi}\ket{\psi}$ với mọi $\psi$ \cite{wootters1982}. Chứng minh ngắn
+dựa vào tính tuyến tính: nếu một mạch sao chép được $\ket{0}$ và $\ket{1}$ (CX làm được điều này),
+thì tác dụng của nó lên $\ket{+}$ buộc phải là $\frac{1}{\sqrt2}(\ket{00}+\ket{11})$ -- một trạng thái
+Bell -- chứ không phải $\ket{+}\ket{+}$.
+
+\paragraph{Teleportation.} Alice muốn chuyển trạng thái chưa biết $\ket{\psi}$ của qubit $q_0$ cho Bob
+\cite{bennett1993teleport}. Hai người chia sẵn một cặp Bell ($q_1$ của Alice, $q_2$ của Bob). Alice
+áp CX$(q_0,q_1)$ rồi $H(q_0)$, đo hai qubit của mình được hai bit $m_0, m_1$, gửi chúng cho Bob qua
+kênh cổ điển; Bob áp $X^{m_1}$ rồi $Z^{m_0}$ và thu được đúng $\ket{\psi}$. Bước sửa cuối dùng
+\textbf{mid-circuit measurement} và điều khiển cổ điển (trong Qiskit 2.x: \code{with qc.if\_test(...)}).
+
+\begin{figure}[h]
+  \centering
+  \begin{quantikz}[row sep=0.3cm]
+    \lstick{$q_0: \ket{\psi}$} & & & \ctrl{1} & \gate{H} & \meter{} & \setwiretype{c} \rstick{$m_0$} \\
+    \lstick{$q_1: \ket{0}$} & \gate{H} & \ctrl{1} & \targ{} & & \meter{} & \setwiretype{c} \rstick{$m_1$} \\
+    \lstick{$q_2: \ket{0}$} & & \targ{} & & & & \gate{X^{m_1}} & \gate{Z^{m_0}} & \rstick{$\ket{\psi}$}
+  \end{quantikz}
+  \caption{Giao thức teleportation. Hai cổng đầu tạo cặp Bell giữa Alice ($q_1$) và Bob ($q_2$).
+  Hai cổng sửa của Bob được điều khiển bởi hai bit cổ điển $m_0, m_1$.}
+  \label{fig:teleport}
+\end{figure}
+
+Teleportation không vi phạm thuyết tương đối: trước khi nhận hai bit cổ điển, qubit của Bob ở trạng
+thái hoàn toàn ngẫu nhiên (đo cho 50/50). Nó cũng không vi phạm no-cloning: trạng thái gốc của Alice
+bị phá huỷ khi đo. Do mạch có phép đo giữa chừng, không thể kiểm tra bằng \code{Statevector}; cách
+kiểm tra chuẩn là áp nghịch đảo của mạch chuẩn bị $\ket{\psi}$ lên qubit của Bob rồi đo -- phải được
+\code{0} trong 100\% số shot.
+
+\paragraph{Superdense coding.} Chiều ngược lại: gửi \textbf{2 bit cổ điển} bằng \textbf{1 qubit}
+\cite{bennett1992dense}. Với một cặp Bell chia trước, Alice áp $I$, $X$, $Z$ hoặc $ZX$ lên qubit của
+mình tuỳ theo hai bit cần gửi; bốn phép này biến cặp Bell thành bốn trạng thái Bell trực giao, nên Bob
+phân biệt chắc chắn bằng cách đảo mạch tạo Bell (CX rồi $H$) và đo. Tổng số qubit được truyền vẫn là
+2 (một qubit đi trước khi chia cặp), nên không vi phạm giới hạn Holevo.
+
+\subsection{Tổng kết chương}
+
+\begin{table}[h]
+  \centering
+  \caption{So sánh các thuật toán và giao thức đã trình bày.}
+  \label{tab:algo-summary}
+  \small
+  \begin{tabularx}{\linewidth}{@{}lllX@{}}
+    \toprule
+    \textbf{Bài toán} & \textbf{Cổ điển} & \textbf{Lượng tử} & \textbf{Cơ chế chính} \\
+    \midrule
+    Deutsch & 2 lần gọi & 1 lần gọi & phase kickback + $H$ \\
+    Deutsch--Jozsa & $2^{n-1}+1$ lần gọi & 1 lần gọi & phase kickback + $H^{\otimes n}$ \\
+    Bernstein--Vazirani & $n$ lần gọi & 1 lần gọi & interference về đúng $\ket{s}$ \\
+    Grover & $O(N)$ & $O(\sqrt{N})$ & oracle + diffuser (khuếch đại amplitude) \\
+    Teleportation & -- & 1 qubit $=$ 1 cặp Bell + 2 bit & entanglement + điều khiển cổ điển \\
+    Superdense coding & -- & 2 bit $=$ 1 cặp Bell + 1 qubit & 4 trạng thái Bell trực giao \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+Điểm chung về bản chất: các thuật toán này \textbf{không} tính $f$ nhanh hơn. Chúng trả lời một câu
+hỏi \emph{toàn cục} về $f$ mà không cần biết từng giá trị $f(x)$, nhờ ghi thông tin vào phase và
+dùng interference để đọc ra. Tất cả đều được viết dưới dạng mạch lý tưởng -- dùng cổng
+multi-controlled, CX giữa hai qubit bất kỳ. Chương tiếp theo xem điều gì xảy ra khi đưa các mạch đó
+lên phần cứng thật.

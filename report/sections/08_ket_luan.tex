@@ -1,0 +1,65 @@
+%==============================================================
+\section{Kết luận và hướng phát triển}
+\label{sec:conclusion}
+%==============================================================
+
+\subsection{Kết luận}
+
+Chuyên đề đã đi qua một lộ trình liền mạch từ khái niệm cơ bản nhất tới một bài toán nghiên cứu cụ
+thể:
+\begin{itemize}[noitemsep]
+  \item \textbf{Nền tảng:} qubit là vector đơn vị trong $\mathbb{C}^2$ viết bằng ký hiệu Dirac; phép
+    đo tuân theo quy tắc Born; relative phase quan sát được còn global phase thì không; hệ $n$ qubit
+    có $2^n$ amplitude và có thể entangled.
+  \item \textbf{Cổng lượng tử:} mọi cổng là ma trận unitary; cổng một qubit là phép quay trên Bloch
+    sphere; CX là cổng hai qubit then chốt và là thước đo chi phí chính.
+  \item \textbf{Thuật toán:} Deutsch--Jozsa, Bernstein--Vazirani và Grover dùng chung cơ chế phase
+    kickback và interference; lợi thế được đo bằng số lần gọi oracle; teleportation và superdense
+    coding dùng entanglement làm tài nguyên.
+  \item \textbf{Compilation:} transpiler là một chuỗi pass trên \code{DAGCircuit} gồm sáu stage; ba
+    bài toán con chính (layout, routing, synthesis) đều NP-hard và được giải bằng heuristic.
+    Thực nghiệm cho thấy compiler ảnh hưởng mạnh tới chất lượng: \code{optimization\_level} nâng
+    xác suất thành công từ 0.89 lên 0.94; layout tốt biến 3 SWAP thành 0; topology thay đổi số SWAP
+    từ 75 xuống 25; \code{gridsynth} cần ít cổng $T$ hơn Solovay--Kitaev hơn 7 lần.
+  \item \textbf{Compilation như MDP:} qubit routing được phát biểu thành MDP với state $(F,\pi)$,
+    action là chọn cạnh SWAP, và ba kiểu reward không cùng chiều; môi trường \code{RoutingEnv} qua
+    \code{check\_env} và kiểm tra cả tính hợp lệ lẫn tính đúng ở mọi episode; thang mốc cho thấy
+    policy tham lam kém \code{SabreSwap(decay)} khoảng 25\%.
+\end{itemize}
+
+Bên cạnh kiến thức, chuyên đề rút ra một bài học phương pháp: trong lĩnh vực này, \textbf{sai lầm
+nguy hiểm nhất là sai lầm im lặng}. Năm bẫy ở Bảng~\ref{tab:traps} đều không sinh lỗi mà chỉ sinh
+số liệu sai, và nhiễu do seed ($\sim$9\%) hay do layout ($\sim$16\%) đủ lớn để biến một ``cải thiện''
+thành nhiễu thuần. Vì vậy hai sản phẩm bàn giao quan trọng nhất của chuyên đề không phải là một
+thuật toán mới, mà là một môi trường \textbf{đúng semantics} và một bộ \textbf{baseline trung thực}.
+
+\subsection{Hạn chế}
+
+\begin{itemize}[noitemsep]
+  \item Mọi thí nghiệm chạy trên simulator và thiết bị giả lập (\code{GenericBackendV2}); chưa chạy
+    trên phần cứng thật, nên reward \code{fidelity} mới dùng sai số giả lập.
+  \item Quy mô thí nghiệm nhỏ (5--9 qubit, vài chục tới vài trăm cổng); kết luận có thể thay đổi ở
+    quy mô của các thiết bị thật (100+ qubit).
+  \item Chưa trình bày các thuật toán dựa trên Quantum Fourier Transform (phase estimation, Shor) và
+    các thuật toán variational (VQE, QAOA).
+  \item Chưa huấn luyện agent RL nào -- đây là chủ đích, vì môi trường và baseline phải được kiểm chứng
+    trước.
+\end{itemize}
+
+\subsection{Hướng phát triển cho Chuyên đề nghiên cứu 2}
+
+\begin{enumerate}[noitemsep]
+  \item Huấn luyện \textbf{DQN} trên \code{RoutingEnv} với reward \code{swap} trên \code{line(5)} --
+    bài toán nhỏ nhất có ý nghĩa. Mục tiêu đầu tiên là \textbf{vượt \code{GreedyPolicy}}, sau đó tiến
+    tới \code{SabreSwap(decay)}.
+  \item Dùng action masking trong mạng (gán logit của action bị mask bằng $-\infty$), sau đó thử
+    \textbf{PPO}.
+  \item So sánh bằng \code{bench.so\_voi\_baseline} trên cùng tập mạch, nhiều seed, báo cáo
+    trung bình $\pm$ độ lệch chuẩn và tính đến mức nhiễu $\sim$9\%.
+  \item Mở rộng dần topology: \code{line(5)} $\to$ \code{ring(5)} $\to$ \code{grid(3,3)} $\to$
+    heavy-hex; thử reward \code{fidelity} với dữ liệu sai số thật; thử kiến trúc graph neural network
+    để tổng quát hoá giữa các kích thước thiết bị \cite{riu2025zx}.
+  \item Song song, thử bài toán \textbf{pass ordering} (action space nhỏ) để kiểm tra toàn bộ pipeline
+    thí nghiệm, và tìm hiểu thêm QFT, phase estimation, VQE và mô phỏng có nhiễu bằng
+    \code{qiskit\_aer.noise}.
+\end{enumerate}

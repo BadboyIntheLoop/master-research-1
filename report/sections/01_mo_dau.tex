@@ -1,0 +1,105 @@
+%==============================================================
+\section{Mở đầu}
+\label{sec:intro}
+%==============================================================
+
+\subsection{Bối cảnh}
+
+Điện toán lượng tử (quantum computing) là mô hình tính toán dựa trên các nguyên lý của cơ học lượng
+tử: \emph{superposition}, \emph{entanglement} và \emph{interference}. Thay vì bit cổ điển chỉ nhận
+giá trị $0$ hoặc $1$, đơn vị thông tin của máy tính lượng tử là \textbf{qubit} -- một vector đơn vị
+trong không gian Hilbert hai chiều. Một hệ $n$ qubit được mô tả bởi $2^n$ amplitude phức, và các
+thuật toán lượng tử khai thác cấu trúc này để giải một số bài toán với số bước ít hơn đáng kể so với
+mọi thuật toán cổ điển đã biết: Grover tìm kiếm trong $O(\sqrt{N})$ bước thay vì $O(N)$
+\cite{grover1996}, Shor phân tích thừa số nguyên tố trong thời gian đa thức \cite{shor1997}.
+
+Tuy nhiên, các máy tính lượng tử hiện nay thuộc thời kỳ \textbf{NISQ} (Noisy Intermediate-Scale
+Quantum) \cite{preskill2018nisq}: vài chục tới vài trăm qubit, chưa có sửa lỗi đầy đủ, và mỗi phép
+toán đều có sai số. Cụ thể, một thiết bị thật áp đặt ba ràng buộc lên mạch lượng tử:
+\begin{enumerate}[noitemsep]
+  \item \textbf{Basis gates} -- chỉ thực hiện được một tập cổng nhỏ, ví dụ
+    $\{\code{rz}, \code{sx}, \code{x}, \code{cx}\}$.
+  \item \textbf{Connectivity} -- cổng hai qubit chỉ thực hiện được trên các cặp qubit nối trực tiếp
+    với nhau theo một đồ thị cố định (\emph{coupling map}).
+  \item \textbf{Noise} -- cổng hai qubit có xác suất lỗi khoảng $10^{-3}$--$10^{-2}$, tệ hơn cổng
+    một qubit một tới hai bậc.
+\end{enumerate}
+
+Người lập trình viết mạch ở mức trừu tượng (dùng Toffoli, SWAP, cổng giữa hai qubit bất kỳ), còn
+thiết bị chỉ chạy được mạch thoả cả ba ràng buộc trên. Bước dịch mạch lý tưởng thành mạch chạy được
+gọi là \textbf{quantum circuit compilation} -- trong Qiskit gọi là \textbf{transpilation}. Hình
+\ref{fig:motivation} minh hoạ mức độ chênh lệch: một mạch 5 qubit có độ sâu (\emph{depth}) 6 sau khi
+biên dịch lên một thiết bị có coupling map dạng đường thẳng trở thành mạch có depth 40 với 19 cổng
+\cx{}. Toàn bộ khoảng cách đó do compiler quyết định, và mỗi cổng \cx{} tiết kiệm được là một phần
+sai số bớt đi.
+
+\begin{figure}[h]
+  \centering
+  \begin{tikzpicture}[node distance=1.2cm]
+    \node[box=AccentBlue, minimum width=3.4cm, minimum height=1.6cm] (src)
+      {\textbf{Mạch lý tưởng}\\ depth 6, size 11\\ \code{ccx}, \code{swap}, \code{cz}, \code{ry}};
+    \node[box=Purple, right=1.4cm of src, minimum width=2.8cm, minimum height=1.6cm] (tr)
+      {\textbf{Transpiler}\\ layout, routing,\\ synthesis, tối ưu};
+    \node[box=ProbRed, right=1.4cm of tr, minimum width=3.4cm, minimum height=1.6cm] (dst)
+      {\textbf{Mạch chạy được}\\ depth 40, size 65\\ 19 \code{cx}, 27 \code{rz}, 12 \code{sx}};
+    \draw[arr] (src) -- (tr);
+    \draw[arr] (tr) -- (dst);
+    \node[below=0.25cm of tr, font=\footnotesize, align=center, text=black!70]
+      {basis $\{\code{cx},\code{rz},\code{sx},\code{x}\}$, coupling map \code{line(5)}};
+  \end{tikzpicture}
+  \caption{Cùng một thuật toán, mạch thật sự chạy trên thiết bị lớn hơn mạch được viết rất nhiều
+  (số liệu đo trong notebook \code{02\_compilation/00}, Qiskit 2.5.2, \code{optimization\_level=2}).}
+  \label{fig:motivation}
+\end{figure}
+
+Vì phần lớn các bài toán con của compilation (chọn layout, chèn SWAP tối thiểu, tổng hợp cổng tối
+ưu) đều là NP-hard \cite{siraichi2018allocation}, các compiler thực tế dùng \emph{heuristic} do con
+người thiết kế, tiêu biểu là thuật toán SABRE \cite{li2019sabre}. Điều này mở ra một hướng nghiên cứu
+đang phát triển mạnh: dùng \textbf{reinforcement learning} (RL) để học các quyết định biên dịch tốt
+hơn heuristic \cite{pozzi2022rlrouting, fosel2021rlopt, ruiz2025alphatensor, riu2025zx}.
+
+\subsection{Mục tiêu của chuyên đề}
+
+Chuyên đề nghiên cứu 1 đặt mục tiêu xây dựng nền tảng đủ vững để bắt đầu nghiên cứu về biên dịch mạch
+lượng tử, cụ thể:
+\begin{enumerate}[noitemsep]
+  \item Nắm vững các khái niệm cơ bản: qubit, ký hiệu Dirac (ket/bra), superposition, phép đo,
+    entanglement.
+  \item Hiểu các cổng lượng tử một và nhiều qubit dưới dạng ma trận unitary, và cách chúng tạo nên
+    mạch lượng tử.
+  \item Hiểu cơ chế chung của các thuật toán lượng tử cơ bản (phase kickback, interference) qua
+    Deutsch--Jozsa, Bernstein--Vazirani, Grover, teleportation và superdense coding.
+  \item Phân tích quá trình biên dịch mạch trong Qiskit như một \textbf{bài toán tối ưu}: các stage,
+    cấu trúc dữ liệu, hàm cost, và các thuật toán layout, routing, synthesis.
+  \item Phát biểu qubit routing thành một Markov decision process (MDP), hiện thực thành môi trường
+    \code{gymnasium} \textbf{đúng semantics}, và dựng \textbf{baseline trung thực} để làm nền cho
+    các thí nghiệm RL ở Chuyên đề nghiên cứu 2.
+\end{enumerate}
+
+\subsection{Phạm vi và công cụ}
+
+Báo cáo giới hạn ở mô hình mạch lượng tử (quantum circuit model) và các thiết bị dạng cổng
+(gate-based). Mọi thí nghiệm được thực hiện bằng \textbf{Qiskit 2.5} \cite{qiskit2024} và
+\code{qiskit-aer} trên simulator, với \code{gymnasium} cho môi trường RL. Toàn bộ mã nguồn được tổ
+chức thành một chuỗi Jupyter notebook trong kho mã \code{master-research-1}, chia làm ba phần tương
+ứng với các chương của báo cáo (Phụ lục~\ref{app:repo}). Mọi con số trong báo cáo đều tái lập được
+bằng notebook tương ứng.
+
+\subsection{Cấu trúc báo cáo}
+
+Báo cáo đi theo trình tự \emph{ket $\to$ cổng $\to$ thuật toán $\to$ compilation}, mỗi chương là nền
+cho chương sau:
+\begin{itemize}[noitemsep]
+  \item \textbf{Mục~\ref{sec:basics}} trình bày qubit, ký hiệu Dirac, superposition, phép đo và hệ
+    nhiều qubit.
+  \item \textbf{Mục~\ref{sec:gates}} trình bày các cổng lượng tử, entanglement và quy trình làm việc
+    với Qiskit.
+  \item \textbf{Mục~\ref{sec:algorithms}} trình bày các thuật toán lượng tử cơ bản xoay quanh cơ chế
+    phase kickback.
+  \item \textbf{Mục~\ref{sec:compilation}} phân tích quá trình biên dịch: pipeline, layout, routing,
+    synthesis và cách tự viết pass.
+  \item \textbf{Mục~\ref{sec:mdp}} phát biểu compilation như một bài toán MDP cho reinforcement
+    learning.
+  \item \textbf{Mục~\ref{sec:experiments}} tổng hợp các kết quả thực nghiệm và bài học phương pháp.
+  \item \textbf{Mục~\ref{sec:conclusion}} kết luận và đề xuất hướng phát triển.
+\end{itemize}

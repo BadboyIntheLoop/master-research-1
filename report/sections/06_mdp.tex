@@ -1,0 +1,126 @@
+%==============================================================
+\section{Biên dịch như một bài toán quyết định tuần tự}
+\label{sec:mdp}
+%==============================================================
+
+Thuật toán~\ref{alg:routing} cho thấy routing chỉ có \textbf{đúng một} chỗ cần quyết định, lặp lại
+nhiều lần: chọn cạnh nào để chèn SWAP. Cấu trúc này khớp tự nhiên với một Markov decision process
+(MDP) \cite{sutton2018rl} -- không phải vì ``RL giải được mọi thứ'', mà vì bản chất bài toán đúng là
+như vậy. Chương này phát biểu MDP đó, trình bày các quyết định thiết kế khi hiện thực nó thành một
+môi trường \code{gymnasium}, và đặt thang mốc so sánh.
+
+\subsection{Phát biểu MDP cho qubit routing}
+
+\begin{table}[h]
+  \centering
+  \caption{Các thành phần MDP của bài toán qubit routing.}
+  \label{tab:mdp}
+  \small
+  \begin{tabularx}{\linewidth}{@{}lX@{}}
+    \toprule
+    \textbf{Thành phần} & \textbf{Trong routing} \\
+    \midrule
+    State $s_t$ & front layer $F$ của DAG còn lại, mapping hiện tại $\pi$, (và lớp lookahead) \\
+    Action $a_t$ & chọn một cạnh $(a,b)\in E$ của coupling map để chèn SWAP; $|\mathcal{A}| = |E|$ \\
+    Transition & chèn SWAP $\to$ cập nhật $\pi$ $\to$ \textbf{bắt buộc} thực thi mọi cổng đã hợp lệ (tất định) \\
+    Reward $r_t$ & $-1$ mỗi SWAP, hoặc $-\Delta\text{depth}$, hoặc $\log$ fidelity của SWAP \\
+    Terminal & DAG rỗng (\code{terminated}); vượt số bước tối đa (\code{truncated}) \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\paragraph{Tính Markov.} Cặp $(F,\pi)$ cùng DAG còn lại xác định đầy đủ tương lai -- không cần biết đã
+đi đường nào để tới trạng thái hiện tại. Đây là điều kiện bắt buộc để áp dụng RL, và nó được thoả.
+
+\paragraph{Thực thi cổng là bắt buộc, không phải action.} Nếu để agent tự quyết ``thực thi hay hoãn''
+một cổng đã hợp lệ, action space lớn hơn mà không thêm khả năng nào: hoãn một cổng đã hợp lệ không bao
+giờ có lợi. Vì vậy transition tự động thực thi mọi cổng chạy được, và agent chỉ quyết định SWAP.
+
+\subsection{Thiết kế observation}
+
+Cách encode state quyết định agent có học được hay không. Môi trường \code{RoutingEnv} dùng ba quyết
+định thiết kế:
+\begin{enumerate}[label=(\alph*), noitemsep]
+  \item \textbf{Dùng qubit vật lý, không dùng qubit logic.} Observation ghi ``hai qubit \emph{vật lý}
+    $Q_a, Q_b$ đang cần kề nhau'' dưới dạng ma trận kề $n\times n$. Nhờ vậy observation \emph{bất biến}
+    với cách đánh số qubit logic; nếu không, agent phải học $n!$ phiên bản của cùng một tình huống.
+  \item \textbf{Thêm một lớp lookahead.} Chỉ nhìn front layer là đủ tính Markov nhưng khó học: một SWAP
+    tốt cho hiện tại có thể tệ cho các cổng ngay sau. Heuristic \code{lookahead} hơn \code{basic}
+    chính vì lý do này~\eqref{eq:hlook}.
+  \item \textbf{Thêm một số đo tiến độ} -- tỉ lệ cổng đã thực thi -- để agent biết mình ở đầu hay cuối
+    episode.
+\end{enumerate}
+Observation vì vậy là vector $[\,\text{front } (n\times n) \mid \text{lookahead } (n\times n) \mid
+\text{tiến độ}\,]$, với \code{line(5)} có kích thước $2\cdot5^2+1 = 51$.
+
+\paragraph{Action masking.} Ở mỗi bước chỉ một số cạnh là có nghĩa -- SWAP trên cạnh không liên quan
+tới qubit nào đang bị kẹt chắc chắn chỉ làm mạch dài thêm. Môi trường trả mask qua
+\code{info["action\_mask"]} nhưng vẫn nhận action bị mask (mọi thư viện RL cần \code{step()} không
+raise). Trên \code{line(5)}, trung bình 69\% action là có nghĩa nên mask ít tác dụng; nhưng với
+heavy-hex 115 qubit và 132 cạnh, mask là bắt buộc.
+
+\subsection{Thiết kế reward}
+
+Reward định nghĩa cái agent sẽ giỏi, nên đây là quyết định quan trọng nhất (Bảng~\ref{tab:reward}).
+
+\begin{table}[h]
+  \centering
+  \caption{Ba kiểu reward trong \code{RoutingEnv}. $\epsilon_{ab}$ là sai số cổng hai qubit trên
+  cạnh $(a,b)$; hệ số 3 vì một SWAP bằng 3 cổng hai qubit.}
+  \label{tab:reward}
+  \small
+  \begin{tabularx}{\linewidth}{@{}llXX@{}}
+    \toprule
+    \textbf{Kiểu} & \textbf{Công thức} & \textbf{Ưu điểm} & \textbf{Nhược điểm} \\
+    \midrule
+    \code{swap} & $-1$ mỗi SWAP & đơn giản, dễ so với các công trình khác & bỏ qua depth và noise \\
+    \code{depth} & $-\Delta\text{depth}$ & thưởng SWAP song song được & phụ thuộc thứ tự thực thi \\
+    \code{fidelity} & $3\log(1-\epsilon_{ab})$ & gần mục tiêu thật nhất; học được cạnh nào tốt & cần dữ liệu sai số, phụ thuộc thiết bị \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+Ba reward này \textbf{không cùng chiều}: thí nghiệm ở Mục~\ref{sec:exp-topology} cho thấy
+\code{grid(3,3)} cần ít SWAP hơn \code{ring(9)} nhưng depth lại cao hơn. Vì vậy ``agent giảm 10\% số
+SWAP'' không tự động có nghĩa là mạch chạy tốt hơn trên thiết bị thật. Reward \code{fidelity} là log
+của xác suất thành công~\eqref{eq:psuccess}, nên tổng reward của một episode chính là
+$\log P_{\text{thành công}}$ phần do routing gây ra.
+
+\subsection{Cổng kiểm tra: hợp lệ \emph{và} đúng}
+
+Trong môi trường RL, hai lỗi ở Mục~\ref{sec:verify} còn nguy hiểm hơn, vì agent \emph{tối ưu hoá
+đúng cái ta đo}: nếu môi trường có lỗ hổng, agent sẽ khai thác đúng lỗ hổng đó. Hàm
+\code{kiem\_tra\_ket\_qua} kiểm tra cả hai điều kiện cho mỗi episode: (1) \textbf{hợp lệ} bằng
+\code{CheckMap}; (2) \textbf{đúng} bằng so sánh unitary với mạch gốc sau khi bù hoán vị bằng
+$\pi^{-1}$. Chạy 100 episode cho mỗi policy mốc, cả \code{RandomPolicy} lẫn \code{GreedyPolicy} đều
+đạt 100\% hợp lệ và 100\% đúng. Môi trường cũng qua \code{gymnasium.utils.env\_checker.check\_env}
+(đúng API 5 giá trị của \code{step()}, \code{reset(seed=...)} tái lập được, observation đúng
+\code{observation\_space}).
+
+\subsection{Hai cách phát biểu khác}
+
+Routing không phải bài toán biên dịch duy nhất phát biểu được thành bài toán quyết định
+(Bảng~\ref{tab:framings}).
+
+\begin{table}[h]
+  \centering
+  \caption{Ba cách phát biểu compilation thành bài toán học tăng cường.}
+  \label{tab:framings}
+  \small
+  \begin{tabularx}{\linewidth}{@{}lXXX@{}}
+    \toprule
+    & \textbf{Routing} & \textbf{Synthesis (T-count)} & \textbf{Pass ordering} \\
+    \midrule
+    State & $(F, \pi)$ + lookahead & unitary còn lại / mạch Clifford+T hiện tại & metric của mạch (depth, size, số CX) \\
+    Action & chọn cạnh để SWAP & thêm một cổng / áp một luật rewrite & chọn pass tiếp theo \\
+    Reward & $-1$, $-\Delta$depth, $\log$ fidelity & $-1$ mỗi cổng $T$, thưởng khi đạt $\epsilon$ & $-\Delta$(hàm cost) \\
+    Baseline & \code{SabreSwap(decay)} & \code{gridsynth}; \code{OptimizeCliffordT} ($-34\%$) & \code{optimization\_level} 0$\to$3: 37$\to$19 CX \\
+    Độ khó & trung bình; action rời rạc & khó: state liên tục, reward thưa & dễ nhất; action space nhỏ \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+Synthesis là hướng của AlphaTensor-Quantum \cite{ruiz2025alphatensor} và RL cho compiling một qubit
+\cite{moro2021rlcompiling}: khó hơn vì không gian state liên tục và reward thưa, nhưng giá trị thực tế
+lớn vì T-count chi phối tài nguyên của máy chịu lỗi. Pass ordering có action space nhỏ nhất (vài chục
+pass) và episode ngắn, nên là điểm khởi đầu tốt để kiểm tra toàn bộ pipeline thí nghiệm.

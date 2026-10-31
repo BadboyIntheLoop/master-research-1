@@ -1,0 +1,237 @@
+%==============================================================
+\section{Cổng lượng tử và mạch lượng tử}
+\label{sec:gates}
+%==============================================================
+
+\subsection{Cổng lượng tử là ma trận unitary}
+
+Một cổng lượng tử tác dụng lên $n$ qubit là một ma trận \textbf{unitary} $U$ kích thước
+$2^n \times 2^n$, tức $U^\dagger U = I$. Áp cổng lên trạng thái chính là phép nhân ma trận:
+$\ket{\psi'} = U\ket{\psi}$. Tính unitary kéo theo hai hệ quả quan trọng:
+\begin{itemize}[noitemsep]
+  \item \textbf{Bảo toàn chuẩn} -- tổng xác suất luôn bằng 1 sau mỗi cổng.
+  \item \textbf{Luôn đảo ngược được} -- mọi cổng có nghịch đảo $U^{-1} = U^\dagger$. Không có cổng
+    lượng tử nào ``xoá'' thông tin, khác hẳn cổng AND cổ điển.
+\end{itemize}
+
+\subsection{Cổng một qubit}
+
+\paragraph{Nhóm Pauli.}
+\begin{equation}
+  X = \begin{pmatrix}0&1\\1&0\end{pmatrix}, \qquad
+  Y = \begin{pmatrix}0&-i\\i&0\end{pmatrix}, \qquad
+  Z = \begin{pmatrix}1&0\\0&-1\end{pmatrix}.
+\end{equation}
+$X$ là ``NOT lượng tử'' (bit flip, $\ket{0}\leftrightarrow\ket{1}$); $Z$ là phase flip
+($\ket{1}\to-\ket{1}$); $Y = iXZ$ làm cả hai. Trên Bloch sphere chúng là các phép quay $180^\circ$
+quanh trục tương ứng, và $X^2 = Y^2 = Z^2 = I$.
+
+\paragraph{Hadamard.}
+\begin{equation}
+  H = \frac{1}{\sqrt2}\begin{pmatrix}1&1\\1&-1\end{pmatrix}, \qquad
+  H\ket{0} = \ket{+}, \quad H\ket{1} = \ket{-}, \quad H^2 = I.
+\end{equation}
+$H$ chuyển qua lại giữa cơ sở $Z$ và cơ sở $X$, nên ``thêm $H$ trước khi đo'' chính là đo trong cơ
+sở $X$. Đẳng thức $HZH = X$ (và $HXH = Z$) được dùng liên tục trong thiết kế và tối ưu mạch.
+
+\paragraph{Cổng phase.}
+\begin{equation}
+  S = \begin{pmatrix}1&0\\0&i\end{pmatrix}, \qquad
+  T = \begin{pmatrix}1&0\\0&e^{i\pi/4}\end{pmatrix}, \qquad
+  P(\lambda) = \begin{pmatrix}1&0\\0&e^{i\lambda}\end{pmatrix},
+  \qquad S^2 = Z,\ T^2 = S.
+\end{equation}
+Các cổng này chỉ thêm phase cho thành phần $\ket{1}$, tức quay quanh trục $Z$. Vì không đổi
+$|\alpha|, |\beta|$ nên đo ngay sau cổng phase không thấy khác biệt gì; phase chỉ lộ ra khi kết hợp
+với $H$. Cổng $T$ đặc biệt quan trọng ở Mục~\ref{sec:synthesis}: nó là cổng ``đắt'' nhất trên máy
+tính lượng tử chịu lỗi.
+
+\paragraph{Cổng quay.} Với góc tuỳ ý, dùng các cổng rotation
+$R_P(\theta) = e^{-i\theta P/2} = \cos\tfrac{\theta}{2}I - i\sin\tfrac{\theta}{2}P$ với
+$P \in \{X, Y, Z\}$, ví dụ
+\begin{equation}
+  R_Y(\theta) = \begin{pmatrix}\cos\frac\theta2 & -\sin\frac\theta2\\[2pt]
+                               \sin\frac\theta2 & \cos\frac\theta2\end{pmatrix}, \qquad
+  R_Z(\theta) = \begin{pmatrix}e^{-i\theta/2}&0\\0&e^{i\theta/2}\end{pmatrix}.
+\end{equation}
+Chú ý hệ số $\theta/2$: phải quay $\theta = 2\pi$ mới quay về đúng trạng thái ban đầu kể cả phase.
+Ví dụ $R_X(\pi) = -iX$ khác $X$ đúng một global phase.
+
+\paragraph{Cổng tổng quát.} Mọi cổng một qubit đều là trường hợp riêng (sai khác global phase) của
+\begin{equation}
+  U(\theta,\varphi,\lambda) = \begin{pmatrix}
+    \cos\frac\theta2 & -e^{i\lambda}\sin\frac\theta2\\[2pt]
+    e^{i\varphi}\sin\frac\theta2 & e^{i(\varphi+\lambda)}\cos\frac\theta2\end{pmatrix}.
+  \label{eq:u3}
+\end{equation}
+Ba tham số thực khớp với ba bậc tự do của $SU(2)$ -- kết quả này là nền tảng của synthesis một qubit
+ở Mục~\ref{sec:synthesis}.
+
+\begin{table}[h]
+  \centering
+  \caption{Tóm tắt các cổng một qubit. Ký hiệu $\mathrm{diag}(a,b)$ là ma trận đường chéo.}
+  \label{tab:1q}
+  \small
+  \begin{tabular}{@{}llll@{}}
+    \toprule
+    \textbf{Cổng} & \textbf{Qiskit} & \textbf{Quay trên Bloch sphere} & \textbf{Ghi nhớ} \\
+    \midrule
+    $X$ & \code{qc.x(0)} & $180^\circ$ quanh $X$ & NOT lượng tử \\
+    $Y$ & \code{qc.y(0)} & $180^\circ$ quanh $Y$ & bit flip + phase flip \\
+    $Z$ & \code{qc.z(0)} & $180^\circ$ quanh $Z$ & phase flip \\
+    $H$ & \code{qc.h(0)} & $180^\circ$ quanh $(X+Z)/\sqrt2$ & tạo superposition \\
+    $S = \mathrm{diag}(1, i)$ & \code{qc.s(0)} & $90^\circ$ quanh $Z$ & $S^2 = Z$ \\
+    $T = \mathrm{diag}(1, e^{i\pi/4})$ & \code{qc.t(0)} & $45^\circ$ quanh $Z$ & $T^2 = S$ \\
+    $P(\lambda)$ & \code{qc.p(lam, 0)} & $\lambda$ quanh $Z$ & tổng quát của $Z, S, T$ \\
+    $R_X, R_Y, R_Z$ & \code{qc.rx/ry/rz(th, 0)} & $\theta$ quanh trục tương ứng & $R_Y$: $P(1)=\sin^2\frac\theta2$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Thứ tự cổng và thứ tự nhân ma trận.} Mạch được vẽ theo thời gian từ trái sang phải, nhưng
+ma trận tương ứng được nhân từ phải sang trái. Mạch ``$H$ rồi $X$'' có ma trận $U = X \cdot H$, vì
+$X(H\ket{\psi}) = (XH)\ket{\psi}$. Nghịch đảo của cả mạch (\code{qc.inverse()}) đảo ngược thứ tự các
+cổng và lấy liên hợp Hermite từng cổng ($T^\dagger$ là \code{tdg}, $S^\dagger$ là \code{sdg}).
+
+\subsection{Cổng nhiều qubit}
+
+\paragraph{CNOT (CX).} Cổng hai qubit quan trọng nhất: có một qubit \emph{control} và một qubit
+\emph{target}; nếu control bằng 1 thì lật target:
+\begin{equation}
+  \mathrm{CX}\,\ket{c}\ket{t} = \ket{c}\ket{t \oplus c}.
+\end{equation}
+CX là cổng tạo \emph{tương quan} giữa hai qubit, và cũng là cổng khó thực hiện nhất trên phần cứng.
+Vì vậy \textbf{số cổng CX là thước đo chi phí chính} của một mạch -- ý này sẽ xuất hiện lại ở mọi phần
+của Mục~\ref{sec:compilation}.
+
+\paragraph{Các cổng khác.} Bảng~\ref{tab:mq} liệt kê các cổng nhiều qubit thường dùng. Một quan hệ
+đáng nhớ: kẹp $H$ lên target trước và sau CX thì được CZ, tức $\mathrm{CZ} = (I\otimes H)\,\mathrm{CX}\,(I\otimes H)$
+(viết theo thứ tự qubit control $\otimes$ target). Một cổng bất kỳ có thể được biến thành cổng
+controlled bằng \code{.to\_gate().control(n)}.
+
+\begin{table}[h]
+  \centering
+  \caption{Các cổng nhiều qubit thường dùng.}
+  \label{tab:mq}
+  \small
+  \begin{tabular}{@{}lll@{}}
+    \toprule
+    \textbf{Cổng} & \textbf{Qiskit} & \textbf{Ý nghĩa} \\
+    \midrule
+    CX / CNOT & \code{qc.cx(c, t)} & control $=1$ thì lật target \\
+    CZ & \code{qc.cz(a, b)} & cả hai bằng 1 thì thêm dấu $-$; \textbf{đối xứng} \\
+    SWAP & \code{qc.swap(a, b)} & đổi chỗ trạng thái hai qubit; $=3$ CX \\
+    Toffoli (CCX) & \code{qc.ccx(c1, c2, t)} & hai control; đủ để làm mọi hàm logic cổ điển khả nghịch \\
+    CH, CRX, CP, \dots & \code{qc.ch}, \code{qc.crx}, \code{qc.cp} & bản controlled của cổng một qubit \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Entanglement}
+
+\paragraph{Trạng thái Bell.} Chỉ cần hai cổng để tạo ra entanglement:
+\begin{equation}
+  \ket{00} \xrightarrow{\;H \text{ trên } q_0\;} \tfrac{1}{\sqrt2}\big(\ket{00}+\ket{01}\big)
+  \xrightarrow{\;\mathrm{CX}_{0\to1}\;} \tfrac{1}{\sqrt2}\big(\ket{00}+\ket{11}\big) = \ket{\Phi^+}.
+\end{equation}
+
+\begin{figure}[h]
+  \centering
+  \begin{quantikz}
+    \lstick{$q_0: \ket{0}$} & \gate{H} & \ctrl{1} & \meter{} \\
+    \lstick{$q_1: \ket{0}$} & & \targ{} & \meter{}
+  \end{quantikz}
+  \caption{Mạch tạo trạng thái Bell $\ket{\Phi^+}$. Kết quả đo chỉ có \code{00} hoặc \code{11},
+  mỗi chuỗi xác suất $1/2$.}
+  \label{fig:bell}
+\end{figure}
+
+Kết quả đo chỉ có \code{00} và \code{11}, không bao giờ có \code{01} hay \code{10}: hai qubit luôn
+cho cùng kết quả. Bốn trạng thái Bell
+\begin{equation}
+  \ket{\Phi^\pm} = \tfrac{1}{\sqrt2}\big(\ket{00}\pm\ket{11}\big), \qquad
+  \ket{\Psi^\pm} = \tfrac{1}{\sqrt2}\big(\ket{01}\pm\ket{10}\big)
+\end{equation}
+trực giao nhau và tạo thành \textbf{Bell basis} của không gian hai qubit. Mở rộng ra $n$ qubit, ta có
+trạng thái GHZ $\tfrac{1}{\sqrt2}(\ket{0\dots0}+\ket{1\dots1})$, tạo bằng một cổng $H$ và một chuỗi
+CX.
+
+\begin{definition}[Separable và entangled]
+Trạng thái hai qubit là \textbf{separable} nếu viết được thành $\ket{\psi_A}\otimes\ket{\psi_B}$;
+ngược lại nó là \textbf{entangled}.
+\end{definition}
+
+\paragraph{Đo lường entanglement.} Lấy \emph{partial trace} để bỏ qubit $B$, ta được ma trận mật độ
+(density matrix) $\rho_A = \Tr_B\ket{\psi}\bra{\psi}$ của qubit $A$. Khi đó:
+\begin{itemize}[noitemsep]
+  \item \textbf{Purity} $\Tr(\rho_A^2)$ bằng 1 nếu $A$ ở pure state, bằng $0.5$ nếu entangled tối đa.
+  \item \textbf{Entropy von Neumann} $S(\rho_A) = -\Tr(\rho_A\log_2\rho_A)$ bằng 0 nếu không
+    entangled, bằng 1 nếu entangled tối đa.
+\end{itemize}
+Với $\ket{\Phi^+}$, giá trị kỳ vọng tính bằng \code{EstimatorV2} cho $\langle ZZ\rangle = +1$ và
+$\langle XX\rangle = +1$ (tương quan hoàn hảo trong \emph{cả hai} cơ sở -- điều mà tương quan cổ điển
+không làm được), trong khi $\langle ZI\rangle = 0$: riêng từng qubit thì hoàn toàn ngẫu nhiên. Toàn
+bộ thông tin nằm ở mối tương quan giữa hai qubit.
+
+\subsection{Tính universal của tập cổng}
+
+Một tập cổng gọi là \textbf{universal} nếu mọi unitary đều biểu diễn được (chính xác hoặc xấp xỉ tuỳ
+ý) bằng các cổng trong tập. Hai kết quả kinh điển \cite{nielsen2010, barenco1995}:
+\begin{itemize}[noitemsep]
+  \item Các cổng một qubit cùng với CX là universal \emph{chính xác}. Đây là cơ sở của các basis
+    gates trên phần cứng NISQ, ví dụ $\{\code{rz}, \code{sx}, \code{x}, \code{cx}\}$.
+  \item Tập rời rạc Clifford+T $= \{H, S, \mathrm{CX}, T\}$ là universal \emph{xấp xỉ}: mọi unitary
+    xấp xỉ được tới sai số $\epsilon$ tuỳ ý. Đây là tập cổng của máy tính lượng tử chịu lỗi.
+\end{itemize}
+Sự khác biệt giữa hai loại universal này dẫn tới hai bài toán synthesis rất khác nhau ở
+Mục~\ref{sec:synthesis}.
+
+\subsection{Quy trình làm việc với Qiskit 2.x}
+\label{sec:workflow}
+
+Mọi bài toán trong báo cáo đều đi qua năm bước: (1) \textbf{xây mạch} bằng \code{QuantumCircuit};
+(2) \textbf{xem mạch} bằng \code{draw()}, \code{depth()}, \code{count\_ops()}; (3) \textbf{đo} bằng
+\code{measure()} hoặc \code{measure\_all()}; (4) \textbf{chạy} bằng một trong ba cách ở
+Bảng~\ref{tab:primitives}; (5) \textbf{transpile} về tập cổng và coupling map của thiết bị.
+
+\begin{lstlisting}[caption={Quy trình tối thiểu: tạo trạng thái Bell, transpile và lấy mẫu.}]
+from qiskit import QuantumCircuit, transpile
+from qiskit_aer import AerSimulator
+from qiskit_aer.primitives import SamplerV2
+
+qc = QuantumCircuit(2)
+qc.h(0); qc.cx(0, 1)
+qc.measure_all()                      # creates a register named "meas"
+
+backend = AerSimulator()
+tqc = transpile(qc, backend, optimization_level=2)
+res = SamplerV2().run([tqc], shots=1000).result()
+print(res[0].data.meas.get_counts())  # ~ {'00': 500, '11': 500}
+\end{lstlisting}
+
+\begin{table}[h]
+  \centering
+  \caption{Ba cách lấy kết quả từ mạch trong Qiskit 2.x.}
+  \label{tab:primitives}
+  \small
+  \begin{tabular}{@{}llll@{}}
+    \toprule
+    \textbf{Cách} & \textbf{Cho ra} & \textbf{Mạch có \code{measure}?} & \textbf{Dùng khi} \\
+    \midrule
+    \code{Statevector(qc)} & amplitude chính xác & \textbf{không} được có & học, debug mạch nhỏ \\
+    \code{SamplerV2} & counts từ các shot & \textbf{bắt buộc} có & mô phỏng kết quả thật \\
+    \code{EstimatorV2} & giá trị kỳ vọng $\langle O\rangle$ & không cần & VQE, đo tương quan \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{warnbox}[Các lỗi hay gặp khi mới dùng Qiskit 2.x]
+(1) Đọc nhầm thanh ghi: \code{measure\_all()} tạo thanh ghi \code{meas}, không phải \code{c}.
+(2) Gọi \code{Statevector(qc)} khi mạch đã có lệnh đo.
+(3) Quên \code{transpile} trước \code{backend.run()}.
+(4) Nhầm thứ tự bit: qubit 0 là ký tự bên phải.
+(5) So sánh cổng bằng \code{==} trong khi chỉ cần \code{equiv} (khác nhau ở global phase).
+Ngoài ra, nhiều tài liệu trên mạng dùng API Qiskit 0.x đã bị gỡ bỏ (\code{execute},
+\code{Aer.get\_backend}); API tương ứng hiện nay là các primitive \code{SamplerV2}/\code{EstimatorV2}
+và \code{AerSimulator}.
+\end{warnbox}

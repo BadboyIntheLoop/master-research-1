@@ -1,0 +1,176 @@
+%==============================================================
+\section{Cơ sở điện toán lượng tử}
+\label{sec:basics}
+%==============================================================
+
+Chương này trả lời ba câu hỏi nền tảng: một qubit được mô tả bằng gì, \emph{superposition} thực chất
+là gì, và phép đo làm gì với trạng thái đó. Phần cuối mở rộng sang hệ nhiều qubit.
+
+\subsection{Qubit và ký hiệu Dirac}
+
+Bit cổ điển chỉ nhận một trong hai giá trị $0$ hoặc $1$. Qubit là một \textbf{vector đơn vị} trong
+không gian Hilbert phức hai chiều $\mathcal{H} = \mathbb{C}^2$. Hai vector cơ sở được ký hiệu
+\begin{equation}
+  \ket{0} = \begin{pmatrix}1\\0\end{pmatrix}, \qquad
+  \ket{1} = \begin{pmatrix}0\\1\end{pmatrix}.
+  \label{eq:basis}
+\end{equation}
+
+\begin{definition}[Ket, bra và tích trong]
+Ký hiệu $\ket{\psi}$ (đọc là ``ket psi'') là một \textbf{vector cột} biểu diễn trạng thái lượng tử.
+Ký hiệu $\bra{\psi} = \ket{\psi}^\dagger$ (``bra psi'') là \textbf{vector hàng} liên hợp phức của
+nó. Ghép bra với ket cho \textbf{tích trong} (inner product) $\braket{\phi|\psi} \in \mathbb{C}$;
+ghép ket với bra cho \textbf{tích ngoài} (outer product) $\ket{\psi}\bra{\phi}$, là một ma trận.
+Cách viết này gọi là \textbf{ký hiệu Dirac} (bra--ket notation) \cite{nielsen2010}.
+\end{definition}
+
+Hai vector $\ket{0}, \ket{1}$ trực giao ($\braket{0|1} = 0$) và có chuẩn bằng 1
+($\braket{0|0} = \braket{1|1} = 1$); chúng tạo thành \textbf{computational basis} (cơ sở tính
+toán, còn gọi là cơ sở $Z$). Trong Qiskit, mọi qubit luôn được khởi tạo ở $\ket{0}$.
+
+\subsection{Superposition và quy tắc Born}
+
+Trạng thái tổng quát của một qubit là tổ hợp tuyến tính có chuẩn hoá của hai trạng thái cơ sở:
+\begin{equation}
+  \ket{\psi} = \alpha\ket{0} + \beta\ket{1}, \qquad
+  \alpha, \beta \in \mathbb{C}, \qquad |\alpha|^2 + |\beta|^2 = 1.
+  \label{eq:superposition}
+\end{equation}
+Các hệ số $\alpha, \beta$ gọi là \textbf{amplitude} (biên độ xác suất). Khi đo trong cơ sở $Z$, theo
+\textbf{quy tắc Born}, kết quả là $0$ với xác suất $P(0) = |\alpha|^2 = |\braket{0|\psi}|^2$ và là
+$1$ với xác suất $P(1) = |\beta|^2$. Điều kiện chuẩn hoá bảo đảm tổng xác suất bằng 1.
+
+Ba trạng thái superposition thường gặp:
+\begin{equation}
+  \ket{+} = \tfrac{1}{\sqrt2}\big(\ket{0} + \ket{1}\big), \qquad
+  \ket{-} = \tfrac{1}{\sqrt2}\big(\ket{0} - \ket{1}\big), \qquad
+  \ket{i} = \tfrac{1}{\sqrt2}\big(\ket{0} + i\ket{1}\big).
+  \label{eq:plusminus}
+\end{equation}
+Cả ba đều cho $P(0) = P(1) = 0.5$ khi đo trong cơ sở $Z$, nhưng chúng \textbf{không phải} cùng một
+trạng thái -- sự khác biệt nằm ở \emph{phase} của amplitude (Mục~\ref{sec:phase}).
+
+\begin{keybox}
+Superposition \textbf{không} có nghĩa là ``qubit vừa là 0 vừa là 1'' theo nghĩa cổ điển. Nó có nghĩa
+là trạng thái là một vector có hai thành phần phức, và hai thành phần này có thể \emph{giao thoa}
+(cộng dồn hoặc triệt tiêu) với nhau dưới tác dụng của các cổng. Interference mới là nguồn gốc lợi thế
+của thuật toán lượng tử.
+\end{keybox}
+
+\subsection{Bloch sphere}
+
+Bỏ qua global phase (xem Mục~\ref{sec:phase}), mọi trạng thái một qubit đều viết được dưới dạng
+\begin{equation}
+  \ket{\psi} = \cos\tfrac{\theta}{2}\ket{0} + e^{i\varphi}\sin\tfrac{\theta}{2}\ket{1},
+  \qquad 0 \le \theta \le \pi,\ 0 \le \varphi < 2\pi.
+  \label{eq:bloch}
+\end{equation}
+Cặp góc $(\theta, \varphi)$ xác định một điểm trên mặt cầu đơn vị gọi là \textbf{Bloch sphere}
+(Hình~\ref{fig:bloch}). Các trạng thái $\ket{0}, \ket{1}$ nằm ở hai cực, $\ket{\pm}$ trên trục $X$,
+$\ket{\pm i}$ trên trục $Y$. Đáng chú ý: hai trạng thái \emph{trực giao} như $\ket{0}$ và $\ket{1}$
+nằm \textbf{đối diện} nhau trên cầu chứ không vuông góc. Trên Bloch sphere, mọi cổng một qubit là một
+\textbf{phép quay}.
+
+\begin{figure}[h]
+  \centering
+  \begin{tikzpicture}[scale=2.1, >=Stealth]
+    % sphere
+    \shade[ball color=AccentBlue!8, opacity=0.6] (0,0) circle (1);
+    \draw[thick] (0,0) circle (1);
+    \draw[dashed, black!50] (1,0) arc (0:180:1 and 0.3);
+    \draw[black!70] (-1,0) arc (180:360:1 and 0.3);
+    % axes
+    \draw[->] (0,0) -- (0,1.25) node[above] {$z$};
+    \draw[->] (0,0) -- (-0.55,-0.55) node[below left] {$x$};
+    \draw[->] (0,0) -- (1.3,0) node[right] {$y$};
+    \draw[dashed, black!40] (0,0) -- (0,-1);
+    % labels of basis states
+    \fill (0,1) circle (0.025) node[above right] {$\ket{0}$};
+    \fill (0,-1) circle (0.025) node[below right] {$\ket{1}$};
+    \fill (-0.42,-0.42) circle (0.025) node[left=2pt] {$\ket{+}$};
+    \fill (0.42,0.42) circle (0.02) node[above right=-1pt, black!60] {$\ket{-}$};
+    \fill (1,0) circle (0.025) node[below right] {$\ket{i}$};
+    % state vector
+    \coordinate (P) at (0.55,0.62);
+    \coordinate (Pp) at (0.55,-0.18);
+    \draw[->, very thick, ProbRed] (0,0) -- (P) node[above right] {$\ket{\psi}$};
+    \draw[dashed, ProbRed!70] (P) -- (Pp);
+    \draw[dashed, ProbRed!70] (0,0) -- (Pp);
+    % angles
+    \draw[OkGreen, thick] (0,0.35) arc (90:48:0.35);
+    \node[OkGreen] at (0.15,0.5) {$\theta$};
+    \draw[Purple, thick] (-0.2,-0.2) arc (225:340:0.28 and 0.12);
+    \node[Purple] at (0.08,-0.33) {$\varphi$};
+  \end{tikzpicture}
+  \caption{Bloch sphere. Trạng thái $\ket{\psi}$ ở phương trình~\eqref{eq:bloch} ứng với điểm có
+  góc cực $\theta$ và góc phương vị $\varphi$.}
+  \label{fig:bloch}
+\end{figure}
+
+\subsection{Phép đo và collapse}
+
+Phép đo trong cơ sở $Z$ trả về $0$ hoặc $1$ theo quy tắc Born, và sau phép đo trạng thái
+\textbf{collapse} (sụp đổ) về đúng ket tương ứng với kết quả. Hệ quả thực tế:
+\begin{itemize}[noitemsep]
+  \item Một lần đo \textbf{không} cho biết $\alpha, \beta$. Muốn ước lượng phân bố xác suất phải chuẩn
+    bị lại trạng thái và đo nhiều lần; mỗi lần gọi là một \textbf{shot}.
+  \item Trong Qiskit 2.x, primitive \code{SamplerV2} trả về số lần xuất hiện (\emph{counts}) của mỗi
+    chuỗi bit; \code{Statevector} trả về amplitude chính xác nhưng chỉ dùng được với mạch
+    \emph{không có} lệnh đo.
+\end{itemize}
+
+\subsection{Relative phase và global phase}
+\label{sec:phase}
+
+Hai trạng thái $\ket{+}$ và $\ket{-}$ chỉ khác nhau dấu của amplitude thứ hai -- gọi là
+\textbf{relative phase}. Đo trong cơ sở $Z$ không phân biệt được chúng, nhưng đổi cơ sở đo thì được:
+áp cổng Hadamard trước khi đo, vì $H\ket{+} = \ket{0}$ và $H\ket{-} = \ket{1}$. Ngược lại,
+\textbf{global phase} -- nhân cả vector với $e^{i\gamma}$ -- \textbf{không quan sát được} bằng bất
+kỳ phép đo nào: $\ket{\psi}$ và $e^{i\gamma}\ket{\psi}$ là cùng một trạng thái vật lý.
+
+\begin{keybox}
+Relative phase là ``nguyên liệu'' của mọi thuật toán lượng tử: thuật toán ghi thông tin vào phase,
+rồi dùng interference (thường là cổng $H$) để biến phase thành xác suất đo được. Global phase thì vô
+nghĩa về mặt vật lý -- đây là lý do Qiskit phân biệt \code{Operator.equiv} (bỏ qua global phase) với
+phép so sánh \code{==} (so từng phần tử ma trận).
+\end{keybox}
+
+\subsection{Hệ nhiều qubit và tích tensor}
+
+Hệ gồm hai qubit được mô tả trong không gian $\mathbb{C}^2 \otimes \mathbb{C}^2 = \mathbb{C}^4$.
+Hai qubit độc lập ghép lại bằng \textbf{tích tensor} (tích Kronecker):
+\begin{equation}
+  \ket{a}\otimes\ket{b} =
+  \begin{pmatrix}a_0\\a_1\end{pmatrix} \otimes \begin{pmatrix}b_0\\b_1\end{pmatrix}
+  = \begin{pmatrix}a_0b_0\\a_0b_1\\a_1b_0\\a_1b_1\end{pmatrix}.
+\end{equation}
+Tổng quát, $n$ qubit cần $2^n$ amplitude: $\ket{\psi} = \sum_{x \in \{0,1\}^n} c_x \ket{x}$ với
+$\sum_x |c_x|^2 = 1$. Không gian trạng thái tăng theo \emph{hàm mũ} -- đây vừa là nguồn sức mạnh của
+máy tính lượng tử, vừa là lý do mô phỏng cổ điển nhanh chóng trở nên bất khả thi.
+
+\paragraph{Quy ước little-endian của Qiskit.} Qiskit viết trạng thái theo thứ tự
+$\ket{q_{n-1}\dots q_1 q_0}$, tức \textbf{qubit 0 là ký tự bên phải cùng} trong chuỗi kết quả. Ví dụ
+với 3 qubit, chỉ lật qubit 0 thì kết quả đọc là \code{001}, không phải \code{100}. Quy ước này ảnh
+hưởng tới cách viết tích tensor (\code{q1.tensor(q0)}) và cách đọc kết quả của mọi thuật toán ở
+Mục~\ref{sec:algorithms}.
+
+\begin{table}[h]
+  \centering
+  \caption{Tóm tắt các khái niệm cơ bản và cách biểu diễn trong Qiskit.}
+  \label{tab:basics}
+  \small
+  \begin{tabular}{@{}lll@{}}
+    \toprule
+    \textbf{Khái niệm} & \textbf{Ý nghĩa} & \textbf{Qiskit} \\
+    \midrule
+    Ket $\ket{0}, \ket{1}$ & computational basis & \code{Statevector.from\_label("0")} \\
+    Amplitude $\alpha, \beta$ & số phức, $|\alpha|^2+|\beta|^2=1$ & \code{sv.data}, \code{sv.is\_valid()} \\
+    Xác suất & $P(k) = |c_k|^2$ (quy tắc Born) & \code{sv.probabilities\_dict()} \\
+    Superposition & tổ hợp tuyến tính các ket & \code{qc.h(0)} \\
+    Đo & lấy mẫu + collapse & \code{qc.measure(...)} + \code{SamplerV2} \\
+    Relative phase & quan sát được (đổi cơ sở đo) & thêm \code{h} trước \code{measure} \\
+    Global phase & không quan sát được & \code{Operator.equiv} \\
+    Thứ tự bit & little-endian, qubit 0 bên phải & \code{'001'}: qubit 0 bằng 1 \\
+    \bottomrule
+  \end{tabular}
+\end{table}

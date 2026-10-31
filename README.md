@@ -41,6 +41,16 @@ The notebooks are wired to the shared kernel `Python 3.12 (Shared Venv)` (`~/.ve
 meant to be opened in VS Code. `02_compilation/` additionally needs `gymnasium`; `torch` (CPU
 build) is installed there in preparation for the RL agents.
 
+## Course report
+
+[`report/`](report/) holds the LaTeX report for the course "Chuyên đề nghiên cứu 1" built from these
+notebooks (in Vietnamese, same layout as the `cv-report` template). The plan and outline are in
+[`report/PLAN.md`](report/PLAN.md). Compile with LuaLaTeX:
+
+```bash
+cd report && latexmk -pdflua -interaction=nonstopmode -outdir=build report.tex
+```
+
 ## Setup
 
 ```bash

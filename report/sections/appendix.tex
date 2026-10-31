@@ -1,0 +1,93 @@
+%==============================================================
+\section*{Phụ lục A: Bảng ký hiệu}
+\addcontentsline{toc}{section}{Phụ lục A: Bảng ký hiệu}
+\label{app:notation}
+%==============================================================
+
+\begin{table}[h]
+  \centering
+  \small
+  \begin{tabular}{@{}ll@{}}
+    \toprule
+    \textbf{Ký hiệu} & \textbf{Ý nghĩa} \\
+    \midrule
+    $\ket{\psi}$, $\bra{\psi}$ & ket (vector cột), bra (vector hàng liên hợp) \\
+    $\braket{\phi|\psi}$ & tích trong của hai trạng thái \\
+    $\alpha, \beta, c_x$ & amplitude (số phức) \\
+    $\ket{0},\ket{1}$ & computational basis (cơ sở $Z$) \\
+    $\ket{+},\ket{-}$ & cơ sở $X$: $\tfrac{1}{\sqrt2}(\ket{0}\pm\ket{1})$ \\
+    $\ket{\Phi^\pm},\ket{\Psi^\pm}$ & bốn trạng thái Bell \\
+    $\otimes$ & tích tensor \\
+    $U^\dagger$ & liên hợp Hermite (chuyển vị liên hợp) của $U$ \\
+    $X, Y, Z$ & các ma trận Pauli \\
+    $H, S, T$ & Hadamard, phase $\pi/2$, phase $\pi/4$ \\
+    $R_X, R_Y, R_Z$ & cổng quay quanh trục tương ứng \\
+    $\rho$, $\Tr$, $S(\rho)$ & density matrix, vết, entropy von Neumann \\
+    $U_f$, $U_\omega$ & bit-flip oracle, phase oracle \\
+    $N = 2^n$, $M$ & kích thước không gian tìm kiếm, số nghiệm (Grover) \\
+    $\theta$ & góc quay của một vòng Grover: $\sin\theta = \sqrt{M/N}$ \\
+    \midrule
+    $q_i$, $Q_j$ & qubit logic, qubit vật lý \\
+    $G_{\text{cm}} = (V, E)$ & coupling map \\
+    $D[i][j]$ & distance matrix của coupling map \\
+    $\pi$ & layout / mapping: qubit logic $\to$ qubit vật lý \\
+    $F$, $E_{\text{ext}}$ & front layer, extended set \\
+    $H_{\text{basic}}, H_{\text{lookahead}}, H_{\text{decay}}$ & các hàm cost heuristic của SABRE \\
+    $W$ & trọng số của phần lookahead \\
+    $\epsilon$, $\epsilon_{ab}$ & sai số cổng; sai số cổng hai qubit trên cạnh $(a,b)$ \\
+    $P_{\text{thành công}}$ & xác suất chạy trọn mạch không lỗi \\
+    $(c_1, c_2, c_3)$ & toạ độ Weyl trong phân tích KAK \\
+    $s_t, a_t, r_t$ & state, action, reward tại bước $t$ của MDP \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+%==============================================================
+\section*{Phụ lục B: Mã nguồn và tái lập kết quả}
+\addcontentsline{toc}{section}{Phụ lục B: Mã nguồn và tái lập kết quả}
+\label{app:repo}
+%==============================================================
+
+Toàn bộ mã nguồn nằm trong kho \code{master-research-1}, tổ chức thành ba thư mục tương ứng với các
+chương của báo cáo (Bảng~\ref{tab:repo}).
+
+\begin{table}[h]
+  \centering
+  \caption{Ánh xạ giữa các mục của báo cáo và notebook trong kho mã.}
+  \label{tab:repo}
+  \small
+  \begin{tabularx}{\linewidth}{@{}lXl@{}}
+    \toprule
+    \textbf{Notebook / module} & \textbf{Nội dung} & \textbf{Mục} \\
+    \midrule
+    \code{00\_fundamental/00\_qubit\_va\_statevector} & qubit, amplitude, Bloch sphere, đo, little-endian & \ref{sec:basics} \\
+    \code{00\_fundamental/01\_cong\_1\_qubit} & cổng một qubit, global phase, thứ tự nhân ma trận & \ref{sec:gates} \\
+    \code{00\_fundamental/02\_cong\_nhieu\_qubit} & tích tensor, CX, Bell, GHZ, đo entanglement & \ref{sec:gates} \\
+    \code{00\_fundamental/03\_qiskit\_workflow} & quy trình 5 bước, primitive, API cũ và mới & \ref{sec:workflow} \\
+    \midrule
+    \code{01\_algorithms/00\_phase\_kickback\_va\_deutsch} & oracle, phase kickback, Deutsch, Deutsch--Jozsa & \ref{sec:algorithms} \\
+    \code{01\_algorithms/01\_bernstein\_vazirani} & Bernstein--Vazirani & \ref{sec:algorithms} \\
+    \code{01\_algorithms/02\_grover} & Grover, số vòng tối ưu, nhiều nghiệm & \ref{sec:algorithms} \\
+    \code{01\_algorithms/03\_teleportation\_va\_superdense} & no-cloning, teleportation, superdense coding & \ref{sec:algorithms} \\
+    \midrule
+    \code{02\_compilation/00\_transpiler\_pipeline} & ràng buộc phần cứng, 6 stage, DAG, front layer, hàm cost & \ref{sec:compilation} \\
+    \code{02\_compilation/01\_layout} & coupling map, layout pass, \code{TranspileLayout}, noise-aware & \ref{sec:layout} \\
+    \code{02\_compilation/02\_routing} & vòng lặp routing, \code{mini\_router}, SABRE, seed, topology & \ref{sec:routing}, \ref{sec:experiments} \\
+    \code{02\_compilation/03\_synthesis\_va\_tcount} & Euler, KAK, Clifford+T, Solovay--Kitaev, gridsynth & \ref{sec:synthesis} \\
+    \code{02\_compilation/04\_custom\_pass\_va\_benchmark} & tự viết pass, benchmark harness & \ref{sec:custompass}, \ref{sec:experiments} \\
+    \code{02\_compilation/05\_compilation\_as\_mdp} & MDP, \code{gymnasium.Env}, reward, thang mốc & \ref{sec:mdp}, \ref{sec:experiments} \\
+    \code{02\_compilation/bench.py} & harness đo đạc dùng chung & \ref{sec:experiments} \\
+    \code{02\_compilation/routing\_env.py} & \code{RoutingEnv}, policy mốc, hàm kiểm tra & \ref{sec:mdp} \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+Tái lập môi trường và chạy notebook:
+\begin{lstlisting}[language=bash]
+uv sync                    # create .venv from uv.lock (qiskit 2.x, qiskit-aer, ...)
+uv sync --group notebook   # add JupyterLab
+uv run jupyter lab         # open and run the notebooks in order
+\end{lstlisting}
+Thư mục \code{02\_compilation} cần thêm \code{gymnasium} (và \code{pandas} cho \code{bench.py});
+notebook \code{04} và \code{05} phải chạy từ bên trong thư mục đó vì chúng \code{import bench} và
+\code{import routing\_env}.

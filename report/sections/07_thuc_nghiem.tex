@@ -1,0 +1,193 @@
+%==============================================================
+\section{Thực nghiệm và thảo luận}
+\label{sec:experiments}
+%==============================================================
+
+Chương này tổng hợp các thí nghiệm định lượng về routing và dựng thang mốc cho các phương pháp RL.
+Trọng tâm không chỉ là các con số, mà là \textbf{phương pháp đo}: trong một môi trường mà nhiễu do
+seed, do layout và do topology đều lớn, kết luận ``phương pháp của tôi tốt hơn'' rất dễ sai -- và sai
+theo hướng mình muốn tin.
+
+\subsection{Thiết lập thực nghiệm}
+
+\begin{itemize}[noitemsep]
+  \item \textbf{Phần mềm:} Python 3.12, Qiskit 2.5.2, \code{qiskit-aer}, \code{gymnasium}; môi
+    trường quản lý bằng \code{uv} với file khoá phiên bản (\code{uv.lock}).
+  \item \textbf{Mạch thử:} mạch ngẫu nhiên sinh bởi \code{bench.mach\_ngau\_nhien}, chỉ gồm cổng một
+    qubit và \cx{}; ví dụ chính là mạch 9 qubit với khoảng 95 cổng \cx{}.
+  \item \textbf{Topology:} \code{line(9)}, \code{ring(9)}, \code{grid(3,3)}, \code{full(9)}.
+  \item \textbf{Router:} \code{BasicSwap}, \code{SabreSwap} với ba heuristic, \code{SabreLayout};
+    các policy \code{RandomPolicy} và \code{GreedyPolicy} chạy trong \code{RoutingEnv}.
+  \item \textbf{Metric:} số SWAP (đếm \emph{ngay sau} routing, vì sau translation SWAP đã bị phân rã
+    thành CX) và depth; mọi kết quả đều qua \code{CheckMap}.
+\end{itemize}
+
+\paragraph{Bốn nguyên tắc của benchmark harness.} Module \code{bench.py} được thiết kế để chặn bốn
+kiểu kết luận sai (Bảng~\ref{tab:harness}).
+
+\begin{table}[h]
+  \centering
+  \caption{Nguyên tắc thiết kế của \code{bench.py}.}
+  \label{tab:harness}
+  \small
+  \begin{tabularx}{\linewidth}{@{}XX@{}}
+    \toprule
+    \textbf{Nguyên tắc} & \textbf{Chặn lỗi gì} \\
+    \midrule
+    luôn chạy \code{CheckMap}, báo lỗi nếu không hợp lệ & agent ``thắng'' bằng cách bỏ qua cổng khó \\
+    \textbf{tách} seed sinh mạch khỏi seed của router & lẫn ``mạch này khó hơn'' với ``router dao động'' \\
+    cố định layout khi so sánh router & so sai bài toán (layout ảnh hưởng $\sim$16\%, lớn hơn khác biệt giữa router) \\
+    so sánh \textbf{ghép cặp} theo (topology, mạch, seed) & độ khó giữa các mạch lấn át khác biệt giữa router \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\subsection{Ảnh hưởng của topology}
+\label{sec:exp-topology}
+
+Hình~\ref{fig:topology} cho thấy topology ảnh hưởng tới số SWAP mạnh hơn mọi lựa chọn heuristic. Chỉ
+thêm \emph{một} cạnh (từ \code{line(9)} sang \code{ring(9)}) đã giảm số SWAP khoảng 44\%;
+\code{full(9)} không cần SWAP nào -- routing chỉ tồn tại vì phần cứng thiếu kết nối. Đáng chú ý,
+\code{grid(3,3)} cần ít SWAP hơn \code{ring(9)} nhưng depth lại cao hơn (227 so với 183 trong lần
+chạy kiểm chứng): \textbf{số SWAP và depth không cùng chiều}, và đó là lý do phải chọn reward có ý thức
+(Bảng~\ref{tab:reward}).
+
+\begin{figure}[h]
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[
+      ybar, width=0.62\linewidth, height=5.2cm, bar width=18pt,
+      ylabel={Số SWAP trung bình}, ymin=0, ymax=120,
+      symbolic x coords={line,ring,grid,full},
+      xtick=data, xticklabels={line(9),ring(9),grid(3{,}3),full(9)}, xticklabel style={font=\small\ttfamily},
+      nodes near coords, nodes near coords style={font=\footnotesize, anchor=south west, xshift=3pt},
+      grid=major, grid style={black!10}, axis x line*=bottom, axis y line*=left,
+      enlarge x limits=0.18,
+    ]
+      \addplot[fill=AccentBlue!60, draw=AccentBlue,
+               error bars/.cd, y dir=both, y explicit]
+        coordinates {
+          (line,75.2) +- (0,32.8)
+          (ring,42.8) +- (0,15.8)
+          (grid,24.5) +- (0,11.4)
+          (full,0) +- (0,0)
+        };
+    \end{axis}
+  \end{tikzpicture}
+  \caption{Số SWAP khi route mạch 9 qubit ($\sim$95 \cx{}) bằng \code{SabreSwap(decay)} trên layout
+  tầm thường, trung bình trên 5 mạch $\times$ 5 seed $=$ 25 lần đo mỗi topology. Thanh lỗi là độ lệch
+  chuẩn, lớn vì trộn cả độ khó khác nhau giữa các mạch.}
+  \label{fig:topology}
+\end{figure}
+
+\subsection{Nhiễu do seed và vai trò của layout}
+
+SABRE phá thế hoà giữa các SWAP cùng cost bằng số ngẫu nhiên, nên kết quả phụ thuộc \code{seed}.
+Tách riêng phần nhiễu này bằng \code{bench.nhieu\_router} (cố định mạch, chỉ đổi seed router) cho
+thấy \code{SabreSwap(decay)} dao động khoảng \textbf{9\%}; \code{BasicSwap} thì tất định. Một kết
+quả quan trọng cho thiết kế thí nghiệm:
+\begin{keybox}
+Một cải thiện nhỏ hơn mức dao động do seed ($\sim$9\%) là nhiễu, trừ khi được đo trên đủ nhiều seed để
+độ lệch chuẩn của trung bình nhỏ lại. Lỗi phương pháp phổ biến nhất là so agent (chạy nhiều lần, lấy
+kết quả tốt nhất) với baseline chạy \emph{một} seed.
+\end{keybox}
+
+Trên một mạch 9 qubit với 158 cổng \cx{}, 15 seed của \code{SabreSwap} trên layout tầm thường cho
+$134.8 \pm 5.7$ SWAP (khoảng 127--149), còn \code{SabreLayout} -- chọn layout và route cùng lúc -- cho
+$112.5 \pm 3.3$ SWAP. Trên tập benchmark, \code{SabreLayout} tốt hơn \code{SabreSwap} + layout tầm
+thường khoảng \textbf{16\%}. Layout và routing không tách rời: một agent chỉ làm routing trên layout
+cố định phải được so với \code{SabreSwap} \emph{trên cùng layout đó}; so với \code{SabreLayout} là so
+sai bài toán.
+
+Ngay cả khi tổng hợp trên 48 cặp (topology, mạch, seed) cho thấy \code{decay} tốt hơn \code{basic}
+khoảng 10\%, vẫn có những cặp mà \code{basic} thắng. Chọn báo cáo đúng một cặp như vậy -- sau khi đã
+xem kết quả -- sẽ ``chứng minh'' được kết luận ngược lại. Đây chính là hình dạng của một bảng số liệu
+RL chỉ chạy một seed trên một mạch.
+
+\subsection{Thang mốc cho reinforcement learning}
+
+Bảng~\ref{tab:baselines} là thang mốc mà các agent ở Chuyên đề nghiên cứu 2 sẽ thêm một dòng vào: 20
+mạch 5 qubit trên \code{line(5)}, layout tầm thường (vì môi trường bắt đầu từ đó), so sánh ghép cặp
+từng mạch với \code{SabreSwap(decay)}.
+
+\begin{table}[h]
+  \centering
+  \caption{Thang mốc trên \code{line(5)}, 20 mạch 5 qubit. Cột cuối là mức kém hơn
+  \code{SabreSwap(decay)}, tính ghép cặp theo từng mạch. Số trong ngoặc là kết quả chạy lại để
+  kiểm chứng.}
+  \label{tab:baselines}
+  \small
+  \begin{tabular}{@{}lcc@{}}
+    \toprule
+    \textbf{Phương pháp} & \textbf{SWAP trung bình} & \textbf{Kém \code{SabreSwap(decay)}} \\
+    \midrule
+    \code{SabreSwap(decay)} -- mốc trên & 8.25 \;(8.30) & 0\% \\
+    \code{SabreSwap(basic)} & 8.45 \;(9.15) & 2.3\% \;(11.2\%) \\
+    \code{GreedyPolicy} trong \code{RoutingEnv} -- mốc giữa & 10.45 \;(10.45) & \textbf{24.9\%} \;(24.4\%) \\
+    \code{BasicSwap} & 13.90 \;(13.90) & 64.6\% \;(63.7\%) \\
+    \code{RandomPolicy} trong \code{RoutingEnv} -- mốc dưới & 27.95 \;(27.95) & 266\% \;(264.5\%) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}[h]
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[
+      xbar, width=0.7\linewidth, height=4.6cm, bar width=9pt,
+      xlabel={Số SWAP trung bình (\code{line(5)}, 20 mạch)}, xmin=0, xmax=33,
+      symbolic y coords={rnd,bsw,grd,sbb,sbd},
+      ytick=data, yticklabels={RandomPolicy,BasicSwap,GreedyPolicy,SabreSwap(basic),SabreSwap(decay)}, yticklabel style={font=\small\ttfamily},
+      nodes near coords, nodes near coords style={font=\footnotesize},
+      grid=major, grid style={black!10}, axis x line*=bottom, axis y line*=left,
+      enlarge y limits=0.15,
+    ]
+      \addplot[fill=OkGreen!50, draw=OkGreen] coordinates {
+        (27.95,rnd) (13.90,bsw) (10.45,grd) (8.45,sbb) (8.25,sbd)
+      };
+    \end{axis}
+  \end{tikzpicture}
+  \caption{Thang mốc cho agent RL. Khoảng cách 24.9\% giữa \code{GreedyPolicy} và
+  \code{SabreSwap(decay)} là mục tiêu đầu tiên cần thu hẹp.}
+  \label{fig:baselines}
+\end{figure}
+
+Số chạy lại khớp với số gốc ở mọi dòng trừ \code{SabreSwap(basic)} -- dòng duy nhất mà kết quả phụ
+thuộc chi tiết cài đặt ngẫu nhiên bên trong SABRE, nhất quán với mức nhiễu do seed ở trên. Mục tiêu
+đầu tiên của một agent \textbf{không phải} thắng \code{SabreSwap} mà là \textbf{vượt}
+\code{GreedyPolicy}, tức thu hẹp khoảng 25\%. Chỉ hơn \code{RandomPolicy} thì chưa chứng minh được gì.
+
+\subsection{Năm ``bẫy im lặng'' và bài học phương pháp}
+
+Trong quá trình thực nghiệm đã gặp năm lỗi không sinh ra exception nào, chỉ sinh ra số liệu sai.
+Chúng đều đánh trúng người tự dựng pipeline routing, nên được ghi lại đầy đủ (Bảng~\ref{tab:traps}).
+
+\begin{table}[h]
+  \centering
+  \caption{Năm bẫy im lặng gặp trong thực nghiệm và cách phát hiện.}
+  \label{tab:traps}
+  \small
+  \begin{tabularx}{\linewidth}{@{}lXX@{}}
+    \toprule
+    & \textbf{Bẫy} & \textbf{Cách phát hiện / tránh} \\
+    \midrule
+    1 & \code{SabreLayout} tự route; nối với \code{ApplyLayout} thì áp layout hai lần $\to$ mạch không hợp lệ & pass nào ghi \code{final\_layout} thì dùng một mình; luôn chạy \code{CheckMap} \\
+    2 & \code{Operator(compiled).equiv(Operator(goc))} trả \code{False} dù mạch đúng & dùng \code{Operator.from\_circuit(compiled)} \\
+    3 & bù hoán vị bằng $\pi$ thay vì $\pi^{-1}$; chỉ lộ khi hoán vị không phải một phép đổi chỗ & test với hoán vị phức tạp; bù bằng nghịch đảo \\
+    4 & \code{unitary\_synthesis\_method} chỉ tác dụng lên \code{UnitaryGate}; \code{epsilon} bị bỏ qua với \code{rz} thường & luôn đo sai số thực của mạch tổng hợp \\
+    5 & plugin Ross--Selinger tên \code{"gridsynth"}; plugin \code{"sk"} gây panic ở tầng Rust, không bắt được bằng \code{try/except} & dùng pass \code{SolovayKitaev} thay cho plugin \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\paragraph{Ba điều dễ hiểu sai về RL cho biên dịch.}
+\begin{enumerate}[noitemsep]
+  \item \textbf{Hợp lệ không đồng nghĩa với đúng.} \code{CheckMap} chỉ kiểm tra cổng hai qubit nằm
+    trên cạnh thật; một agent vẫn có thể sinh mạch hợp lệ mà sai unitary. Phải kiểm tra cả hai, ở mọi
+    episode.
+  \item \textbf{Baseline yếu làm kết quả vô nghĩa.} \code{mini\_router} cài đúng công thức của SABRE
+    mà vẫn tốn 10 SWAP so với 8 của \code{SabreSwap}. So agent với baseline tự cài thì agent ``thắng''
+    dễ dàng, và con số đó không nói lên điều gì.
+  \item \textbf{Ít SWAP không đồng nghĩa với mạch tốt hơn.} Các reward \code{swap}, \code{depth},
+    \code{fidelity} không cùng chiều; \code{fidelity} gần mục tiêu cuối cùng nhất.
+\end{enumerate}

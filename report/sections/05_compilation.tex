@@ -1,0 +1,441 @@
+%==============================================================
+\section{Biên dịch mạch lượng tử}
+\label{sec:compilation}
+%==============================================================
+
+Các chương trước coi mạch lượng tử là một đối tượng toán học: viết \code{qc.ccx(0,1,2)} thì có cổng
+Toffoli, viết \code{qc.cx(0,4)} thì có CX giữa qubit 0 và 4. Phần cứng thật không cho phép điều đó.
+Chương này phân tích quá trình \textbf{compilation} -- dịch mạch lý tưởng thành mạch mà một thiết bị
+cụ thể chạy được, với sai số nhỏ nhất có thể -- và nhìn nó như một \textbf{bài toán tối ưu}.
+
+\subsection{Phát biểu bài toán}
+
+\begin{definition}[Quantum circuit compilation]
+Cho mạch $C$ trên $n$ qubit logic, và một thiết bị mô tả bởi bộ ba
+$\mathcal{T} = (\mathcal{G}, G_{\text{cm}}, \varepsilon)$, trong đó $\mathcal{G}$ là tập
+\textbf{basis gates}, $G_{\text{cm}} = (V, E)$ là \textbf{coupling map} (đỉnh là qubit vật lý, cạnh
+là cặp qubit cho phép cổng hai qubit) và $\varepsilon$ gán sai số cho từng cổng trên từng qubit/cạnh.
+Tìm mạch $C'$ sao cho: (i) $C'$ chỉ dùng cổng trong $\mathcal{G}$; (ii) mọi cổng hai qubit của $C'$
+nằm trên một cạnh của $G_{\text{cm}}$; (iii) $C'$ tương đương với $C$ (cùng unitary, sai khác một
+hoán vị qubit đã biết và global phase); và (iv) $C'$ tối ưu theo một hàm cost (Mục~\ref{sec:cost}).
+\end{definition}
+
+Trong Qiskit, bộ ba $\mathcal{T}$ được đóng gói thành đối tượng \code{Target}. Điều kiện (iii) là chỗ
+dễ sai nhất khi tự viết compiler, và Mục~\ref{sec:verify} sẽ chỉ ra vì sao.
+
+\subsection{Pipeline của transpiler}
+
+Qiskit không biên dịch bằng một hàm lớn duy nhất mà chạy một chuỗi \textbf{pass}, mỗi pass làm một
+việc nhỏ. Các pass được nhóm thành sáu \textbf{stage} cố định (Hình~\ref{fig:pipeline},
+Bảng~\ref{tab:stages}); hàm \code{generate\_preset\_pass\_manager} dựng sẵn chuỗi này theo tham số
+\code{optimization\_level} và trả về một \code{StagedPassManager}.
+
+\begin{figure}[h]
+  \centering
+  \begin{tikzpicture}[node distance=0.35cm, every node/.style={font=\small}]
+    \node[box=black, minimum width=1.7cm] (in) {\code{QuantumCircuit}};
+    \node[box=AccentBlue, right=of in, minimum width=1.2cm] (init) {\code{init}};
+    \node[box=OkGreen, right=of init, minimum width=1.2cm] (lay) {\code{layout}};
+    \node[box=OkGreen, right=of lay, minimum width=1.2cm] (rou) {\code{routing}};
+    \node[box=OrangeYellow, right=of rou, minimum width=1.2cm] (tra) {\code{translation}};
+    \node[box=Purple, right=of tra, minimum width=1.2cm] (opt) {\code{optimization}};
+    \node[box=AccentBlue, below=0.9cm of opt, minimum width=1.2cm] (sch) {\code{scheduling}};
+    \node[box=ProbRed, left=of sch, minimum width=1.7cm] (out) {mạch chạy được};
+    \draw[arr] (in) -- (init);
+    \draw[arr] (init) -- (lay);
+    \draw[arr] (lay) -- (rou);
+    \draw[arr] (rou) -- (tra);
+    \draw[arr] (tra) -- (opt);
+    \draw[arr] (opt) -- (sch);
+    \draw[arr] (sch) -- (out);
+    \draw[arr, dashed] (opt.north east) to[out=70, in=110, looseness=1.6] node[above, font=\footnotesize] {lặp tới khi hội tụ} (opt.north west);
+    \node[draw=black!25, dashed, rounded corners, fit=(lay)(rou), inner sep=4pt,
+          label={[font=\footnotesize, text=OkGreen]below:connectivity}] {};
+  \end{tikzpicture}
+  \caption{Sáu stage của pass manager trong Qiskit. Layout và routing giải quyết ràng buộc
+  connectivity; translation giải quyết ràng buộc basis gates; optimization lặp đến khi không giảm
+  được nữa.}
+  \label{fig:pipeline}
+\end{figure}
+
+\begin{table}[h]
+  \centering
+  \caption{Sáu stage của \code{StagedPassManager} và các pass tiêu biểu.}
+  \label{tab:stages}
+  \small
+  \begin{tabularx}{\linewidth}{@{}lXl@{}}
+    \toprule
+    \textbf{Stage} & \textbf{Nhiệm vụ} & \textbf{Pass tiêu biểu} \\
+    \midrule
+    \code{init} & chuẩn hoá đầu vào, phân rã cổng $\ge 3$ qubit & \code{HighLevelSynthesis},\\ & & \code{UnitarySynthesis} \\
+    \code{layout} & chọn qubit vật lý cho từng qubit logic & \code{SabreLayout}, \code{VF2Layout} \\
+    \code{routing} & chèn SWAP để mọi cổng hai qubit hợp lệ & \code{SabreSwap}, \code{BasicSwap} \\
+    \code{translation} & dịch mọi cổng về basis gates & \code{BasisTranslator} \\
+    \code{optimization} & huỷ, gộp cổng; lặp tới khi hội tụ & \code{Optimize1qGatesDecomposition},\\ & & \code{CommutativeCancellation} \\
+    \code{scheduling} & gán thời điểm thực thi, chèn delay & \code{ALAPScheduleAnalysis}, \code{PadDelay} \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+Theo dõi từng pass bằng tham số \code{callback} của \code{pm.run} cho thấy, với mạch ví dụ ở
+Hình~\ref{fig:motivation}, \textbf{47 pass} được chạy ở \code{optimization\_level=2}.
+\code{BasisTranslator} là pass làm mạch \emph{nở ra} nhiều nhất (dịch \code{ccx}, \code{ry},
+\code{cz} ra basis), các pass optimization sau đó \emph{co} mạch lại, còn phần lớn pass không đổi
+mạch -- chúng là pass phân tích. Có hai loại pass:
+\begin{itemize}[noitemsep]
+  \item \code{AnalysisPass}: đọc mạch, ghi kết quả vào \code{property\_set} -- một từ điển dùng
+    chung cho cả pipeline và là kênh duy nhất để các pass trao đổi thông tin; \textbf{không} sửa mạch.
+  \item \code{TransformationPass}: nhận mạch, trả về mạch mới.
+\end{itemize}
+
+\subsection{\code{DAGCircuit} và front layer}
+
+\code{QuantumCircuit} là một \emph{danh sách} cổng theo thứ tự viết. Thứ tự đó giả tạo: hai cổng trên
+hai qubit khác nhau viết trước--sau nhưng thực ra độc lập. Vì vậy pass làm việc trên biểu diễn trung
+gian \code{DAGCircuit} -- một \textbf{đồ thị có hướng không chu trình} (directed acyclic graph) mà
+đỉnh là cổng và cạnh là qubit/clbit nối hai cổng liên tiếp. Cạnh biểu diễn quan hệ phụ thuộc thật:
+cổng $B$ nằm sau cổng $A$ trên DAG nghĩa là $B$ \emph{phải} chờ $A$.
+
+\begin{definition}[Front layer]
+\textbf{Front layer} $F$ của một DAG là tập các cổng không còn cổng nào chưa thực thi đứng trước nó
+-- tức tập cổng \emph{có thể thực thi ngay}.
+\end{definition}
+
+Front layer là khái niệm trung tâm của routing (Mục~\ref{sec:routing}) và chính là thành phần chính
+của \emph{state} khi phát biểu routing thành bài toán MDP (Mục~\ref{sec:mdp}).
+
+\subsection{Hàm cost: thế nào là một mạch ``tốt''?}
+\label{sec:cost}
+
+Có bốn thước đo hay dùng, và chúng \textbf{không cùng chiều}:
+\begin{itemize}[noitemsep]
+  \item \textbf{depth} -- số lớp cổng trên đường dài nhất; tỉ lệ với thời gian chạy, cần so với thời
+    gian decoherence $T_2$.
+  \item \textbf{size} -- tổng số cổng.
+  \item \textbf{số cổng hai qubit} -- chi phối sai số, nên có trọng số lớn nhất.
+  \item \textbf{số SWAP} -- giá phải trả cho connectivity; mỗi SWAP bằng 3 CX.
+\end{itemize}
+Một ước lượng thô nhưng hữu dụng: nếu mạch có $m$ cổng hai qubit, mỗi cổng lỗi với xác suất
+$\epsilon$, thì xác suất chạy trọn mạch không lỗi là
+\begin{equation}
+  P_{\text{thành công}} \approx (1-\epsilon)^m \approx e^{-\epsilon m}, \qquad
+  \text{hoặc chính xác hơn}\quad P_{\text{thành công}} \approx \prod_{g} (1 - \epsilon_g),
+  \label{eq:psuccess}
+\end{equation}
+trong đó tích lấy trên mọi cổng $g$ với sai số $\epsilon_g$ riêng của qubit/cạnh mà nó chạy trên
+đó (đọc từ \code{Target}). Bảng~\ref{tab:optlevel} cho thấy tác động của compiler: cùng mạch, cùng
+thiết bị giả lập (\code{GenericBackendV2}, sai số \cx{} trung bình $3.1\times10^{-3}$), chỉ đổi
+\code{optimization\_level} đã nâng xác suất thành công từ $0.89$ lên $0.94$.
+
+\begin{table}[h]
+  \centering
+  \caption{Ảnh hưởng của \code{optimization\_level} lên mạch ví dụ (5 qubit, coupling map
+  \code{line(5)}). $P$ tính theo~\eqref{eq:psuccess} chỉ với các cổng \cx{}.}
+  \label{tab:optlevel}
+  \small
+  \begin{tabular}{@{}cccccc@{}}
+    \toprule
+    \code{optimization\_level} & depth & size & số \cx{} & cổng 1 qubit & $P_{\text{thành công}}$ \\
+    \midrule
+    0 & 57 & 82 & 37 & 40 & 0.892 \\
+    1 & 46 & 67 & 31 & 31 & 0.908 \\
+    2 & 40 & 65 & \textbf{19} & 41 & \textbf{0.943} \\
+    3 & 40 & 65 & 19 & 41 & 0.943 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Ba bài toán con quan trọng nhất của compiler -- \emph{layout}, \emph{routing} và \emph{synthesis} --
+được trình bày lần lượt dưới đây.
+
+%--------------------------------------------------------------
+\subsection{Layout: gán qubit logic cho qubit vật lý}
+\label{sec:layout}
+
+Mạch dùng các \textbf{qubit logic} $q_0, q_1, \dots$ -- chỉ là nhãn. Thiết bị có các \textbf{qubit
+vật lý} $Q_0, Q_1, \dots$ nối với nhau theo coupling map. \textbf{Layout} (còn gọi là
+\emph{initial mapping} hay \emph{qubit allocation}) là một đơn ánh
+$\pi: \{q_i\} \to \{Q_j\}$.
+
+\paragraph{Coupling map và distance matrix.} Bậc trung bình của coupling map đo độ ``chật'' của
+thiết bị: \code{line(5)} có bậc 1.6, \code{ring(5)} 2.0, \code{grid(2,4)} 2.5, \code{full(5)} 4.0;
+kiến trúc heavy-hex của IBM chỉ khoảng 2.1. Dữ liệu quan trọng nhất của coupling map là
+\textbf{distance matrix} $D$, với $D[i][j]$ là độ dài đường đi ngắn nhất giữa $Q_i$ và $Q_j$; cổng
+hai qubit giữa $Q_i$ và $Q_j$ cần ít nhất $D[i][j]-1$ SWAP. Mọi heuristic routing đều tính cost từ $D$.
+
+\paragraph{Layout là bài toán subgraph isomorphism.} Mỗi mạch có một \textbf{interaction graph}:
+đỉnh là qubit logic, cạnh là cặp qubit có ít nhất một cổng hai qubit. Nếu interaction graph
+\emph{nhúng được} vào coupling map, tồn tại layout cần \textbf{0 SWAP}. Tìm phép nhúng đó là bài toán
+\emph{subgraph isomorphism} -- NP-đầy đủ; khi không nhúng được, tối thiểu hoá số SWAP cũng là
+NP-hard \cite{siraichi2018allocation}.
+
+\begin{table}[h]
+  \centering
+  \caption{Bốn layout pass của Qiskit, và kết quả trên cùng một mạch 4 qubit có 3 cổng \cx{}
+  trên coupling map \code{line(4)}.}
+  \label{tab:layout}
+  \small
+  \begin{tabular}{@{}llcc@{}}
+    \toprule
+    \textbf{Pass} & \textbf{Cách làm} & \textbf{SWAP} & \textbf{depth} \\
+    \midrule
+    \code{TrivialLayout} & $q_i \to Q_i$, làm baseline & 3 & 5 \\
+    \code{DenseLayout} & chọn vùng con dày nhất của thiết bị, không nhìn mạch & 3 & 5 \\
+    \code{VF2Layout} & subgraph isomorphism chính xác (VF2++ \cite{juttner2018vf2pp}) & \textbf{0} & \textbf{3} \\
+    \code{SabreLayout} & heuristic SABRE, làm layout \emph{và} routing nhiều lần thử & -- & -- \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Bảng~\ref{tab:layout} cho thấy giá trị của layout: cùng một mạch, chỉ khác nhau ở cách đánh số qubit,
+mà một bên cần 3 SWAP (tức 9 cổng \cx{} thêm vào một mạch vốn chỉ có 3 cổng \cx{}), bên kia cần 0.
+
+\paragraph{Noise-aware layout.} Các cạnh của coupling map không như nhau: trên thiết bị giả lập, cạnh
+tệ nhất có sai số gấp 4.1 lần cạnh tốt nhất. Pass \code{VF2PostLayout} tìm một phép nhúng khác cùng
+hình dạng nhưng trên các cạnh tốt hơn. Trong thí nghiệm, nó giảm tổng sai số của một mạch 3 cổng
+\cx{} khoảng \textbf{56\%} (xác suất không lỗi từ $0.9884$ lên $0.9949$) mà \emph{không bớt cổng nào}.
+
+%--------------------------------------------------------------
+\subsection{Routing: chèn SWAP}
+\label{sec:routing}
+
+Với mạch thực tế, interaction graph luôn dày hơn coupling map nên không layout nào đủ tốt; compiler
+buộc phải chèn SWAP để đưa các cặp qubit cần tương tác lại cạnh nhau. Mọi router -- từ
+\code{BasicSwap}, tới SABRE, tới một RL policy -- đều là cùng một vòng lặp (Thuật toán~\ref{alg:routing}),
+chỉ khác nhau ở \textbf{một dòng}: chọn SWAP nào.
+
+\begin{algorithm}[h]
+  \caption{Vòng lặp routing tổng quát}
+  \label{alg:routing}
+  \begin{algorithmic}[1]
+    \Require DAG của mạch, coupling map $G_{\text{cm}}=(V,E)$, layout ban đầu $\pi$
+    \Ensure mạch hợp lệ với $G_{\text{cm}}$ và layout cuối $\pi$
+    \State $F \gets$ front layer của DAG
+    \While{DAG còn cổng}
+      \State $\mathcal{E} \gets \{g \in F : g$ một qubit, hoặc $(\pi(g_1),\pi(g_2)) \in E\}$
+      \If{$\mathcal{E} \neq \emptyset$}
+        \State thực thi mọi cổng trong $\mathcal{E}$, xoá khỏi DAG, cập nhật $F$
+      \Else
+        \State chọn cạnh $(a,b) \in E$ \Comment{\textcolor{ProbRed}{quyết định duy nhất}}
+        \State chèn $\mathrm{SWAP}(a,b)$, cập nhật $\pi$
+      \EndIf
+    \EndWhile
+  \end{algorithmic}
+\end{algorithm}
+
+Tối thiểu hoá số SWAP là NP-hard, nên mọi router thực tế dùng heuristic. Thuật toán \textbf{SABRE}
+\cite{li2019sabre} -- router mặc định của Qiskit (\code{SabreSwap}) -- chọn SWAP làm giảm nhiều nhất
+một hàm cost $H$ tính trên distance matrix. Gọi $F$ là front layer và $E_{\text{ext}}$ là
+\emph{extended set} (vài lớp cổng hai qubit kế tiếp), SABRE có ba heuristic:
+\begin{align}
+  H_{\text{basic}} &= \frac{1}{|F|}\sum_{g\in F} D\big[\pi(g_1)\big]\big[\pi(g_2)\big], \label{eq:hbasic}\\
+  H_{\text{lookahead}} &= H_{\text{basic}} + W\cdot\frac{1}{|E_{\text{ext}}|}\sum_{g\in E_{\text{ext}}} D\big[\pi(g_1)\big]\big[\pi(g_2)\big], \label{eq:hlook}\\
+  H_{\text{decay}} &= \max\big(\mathrm{decay}[a], \mathrm{decay}[b]\big)\cdot H_{\text{lookahead}}, \label{eq:hdecay}
+\end{align}
+trong đó $(a,b)$ là cạnh ứng viên và $\mathrm{decay}[\cdot]$ tăng mỗi khi một qubit vừa bị SWAP, để
+tránh dồn mọi SWAP vào cùng một qubit làm depth tăng vọt. \code{decay} là mặc định, và đây là hàm
+mục tiêu mà một RL policy cần vượt qua -- lưu ý nó đã cân bằng giữa số SWAP và depth chứ không chỉ
+đếm SWAP. Ngoài ra, \code{SabreLayout} chạy routing \emph{xuôi rồi ngược} nhiều lần để tinh chỉnh
+layout ban đầu, nên layout và routing trong SABRE không tách rời.
+
+\begin{table}[h]
+  \centering
+  \caption{So sánh các router trên một mạch 5 qubit (29 \cx{}, depth 71), coupling map
+  \code{line(5)}, layout tầm thường. \code{mini\_router} là router tự cài đặt theo đúng công
+  thức~\eqref{eq:hbasic}.}
+  \label{tab:routers}
+  \small
+  \begin{tabular}{@{}lcc@{}}
+    \toprule
+    \textbf{Router} & \textbf{SWAP} & \textbf{depth} \\
+    \midrule
+    \code{BasicSwap} (đường ngắn nhất, không nhìn trước) & 14 & 123 \\
+    \code{LookaheadSwap} & 7 & 89 \\
+    \code{SabreSwap} -- \code{basic} & 8 & 118 \\
+    \code{SabreSwap} -- \code{lookahead} & 8 & 116 \\
+    \code{SabreSwap} -- \code{decay} & 8 & 116 \\
+    \code{mini\_router} (tự viết, heuristic \code{basic}) & 10 & 113 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Bảng~\ref{tab:routers} cho hai quan sát. Thứ nhất, \code{BasicSwap} tốn gấp 1.75 lần SABRE: nhìn
+trước rất quan trọng. Thứ hai, \code{mini\_router} cài \emph{đúng} công thức~\eqref{eq:hbasic} vẫn
+tốn 10 SWAP so với 8 của \code{SabreSwap basic}, vì bản cài đặt thật còn lọc ứng viên kỹ hơn và chạy
+nhiều thử nghiệm. Hệ quả phương pháp: \textbf{so sánh một agent với baseline tự cài là vô nghĩa} --
+baseline phải là \code{SabreSwap} của Qiskit. \code{LookaheadSwap} cho ít SWAP nhất ở đây nhưng chậm
+khoảng 200 lần, nên không dùng được ở quy mô lớn.
+
+\paragraph{Không phải SWAP nào cũng tốn chi phí.} Pass \code{ElidePermutations} xoá các SWAP viết
+tường minh trong mạch gốc bằng cách đổi nhãn qubit, và \code{OptimizeSwapBeforeMeasure} xoá SWAP đứng
+ngay trước phép đo bằng cách đổi nhãn bit cổ điển. Khi đếm SWAP để làm reward, cần loại các SWAP
+``miễn phí'' này, nếu không agent bị phạt oan.
+
+%--------------------------------------------------------------
+\subsection{Kiểm chứng kết quả biên dịch}
+\label{sec:verify}
+
+Một router có thể sai theo hai cách \emph{độc lập}, và cả hai đều \textbf{im lặng} -- không có
+exception nào:
+\begin{enumerate}[noitemsep]
+  \item \textbf{Không hợp lệ}: còn cổng hai qubit nằm ngoài coupling map. Kiểm tra bằng pass
+    \code{CheckMap} (ghi \code{property\_set["is\_swap\_mapped"]}).
+  \item \textbf{Không đúng}: unitary khác mạch gốc. Kiểm tra bằng so sánh toán tử -- nhưng phải bù
+    lại hoán vị qubit do layout và SWAP gây ra.
+\end{enumerate}
+
+\begin{warnbox}[Ba bẫy kiểm chứng gặp phải khi thực nghiệm]
+\textbf{(a)} \code{Operator(compiled).equiv(Operator(goc))} trả về \code{False} \emph{dù mạch đúng},
+vì \code{Operator(compiled)} đọc theo qubit vật lý còn mạch gốc theo qubit logic. Phải dùng
+\code{Operator.from\_circuit(compiled)}, hàm này đọc \code{compiled.layout} để bù hoán vị.\\[2pt]
+\textbf{(b)} Khi tự route và tự theo dõi $\pi$, phải bù bằng \textbf{nghịch đảo} $\pi^{-1}$
+(\code{inv[vật\_lý] = logic}). Dùng chính $\pi$ chỉ cho kết quả đúng khi hoán vị là một phép đổi
+chỗ đơn lẻ -- đúng là trường hợp mà test nhỏ hay rơi vào, nên lỗi này dễ lọt qua kiểm thử.\\[2pt]
+\textbf{(c)} \code{SabreLayout} \emph{tự route bên trong}. Nối nó với \code{ApplyLayout} theo công
+thức chuẩn sẽ áp layout hai lần và sinh mạch không hợp lệ. Dấu hiệu nhận biết: pass nào ghi
+\code{property\_set["final\_layout"]} thì đã route rồi.
+\end{warnbox}
+
+%--------------------------------------------------------------
+\subsection{Synthesis: từ unitary tới chuỗi cổng}
+\label{sec:synthesis}
+
+Layout và routing lo chuyện \emph{ở đâu}; synthesis lo chuyện \emph{cổng gì}: cho một unitary $U$,
+tìm chuỗi cổng ngắn nhất trong basis gates thực hiện được $U$. Có hai bài toán khác nhau về bản chất:
+\emph{exact synthesis} trên gate set liên tục (máy NISQ) và \emph{approximate synthesis} trên gate set
+rời rạc (máy chịu lỗi).
+
+\paragraph{Exact synthesis một qubit.} Mọi $U\in U(2)$ viết được dưới dạng phân tích Euler
+\begin{equation}
+  U = e^{i\alpha}\,R_Z(\phi)\,R_Y(\theta)\,R_Z(\lambda).
+\end{equation}
+Ba góc khớp với ba bậc tự do của $SU(2)$, nên ba phép quay là tối thiểu và luôn đủ. Trên phần cứng
+siêu dẫn, $R_Z$ gần như miễn phí (chỉ đổi pha của xung điều khiển) còn \code{sx} thì tốn, nên basis
+\code{ZSX} dùng 3 \code{rz} và 2 \code{sx}; mọi phân tích đều chính xác tới sai số làm tròn
+$\sim10^{-16}$.
+
+\paragraph{Exact synthesis hai qubit -- định lý KAK.} Mọi $U\in SU(4)$ viết được thành
+\cite{khaneja2001cartan, vatan2004optimal}
+\begin{equation}
+  U = (A_1\otimes A_2)\; \exp\!\big(i(c_1\,XX + c_2\,YY + c_3\,ZZ)\big)\; (B_1\otimes B_2),
+\end{equation}
+với $A_i, B_i$ là unitary một qubit. Ba hệ số $(c_1,c_2,c_3)$ -- \textbf{toạ độ Weyl} -- quyết định
+hoàn toàn số cổng CX cần thiết, và chỉ có bốn khả năng (Bảng~\ref{tab:kak}). Nghĩa là
+\textbf{3 CX luôn đủ} cho mọi unitary hai qubit \cite{vatan2004optimal}, và SWAP -- cái giá của routing
+-- thuộc lớp khó nhất.
+
+\begin{table}[h]
+  \centering
+  \caption{Định lý KAK: số CX tối thiểu cho unitary hai qubit (đã kiểm chứng bằng
+  \code{TwoQubitBasisDecomposer}, sai số $\sim10^{-15}$).}
+  \label{tab:kak}
+  \small
+  \begin{tabular}{@{}cl@{}}
+    \toprule
+    \textbf{Số CX} & \textbf{Loại unitary} \\
+    \midrule
+    0 & tích tensor $A\otimes B$, không tạo entanglement \\
+    1 & CX, CZ, controlled-phase \\
+    2 & iSWAP, $\sqrt{\mathrm{SWAP}}$ \\
+    3 & SWAP và \emph{hầu hết} unitary ngẫu nhiên (tập cần ít hơn có độ đo 0) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+KAK còn là một chiến lược tối ưu: gom một khối cổng hai qubit liền nhau thành \emph{một} unitary rồi
+tổng hợp lại. Một khối có 7 CX mà toạ độ Weyl chỉ cần 2 thì tiết kiệm được 5 cổng -- điều mà các pass
+huỷ cổng từng cặp không bao giờ tìm ra. Chuỗi pass \code{Collect2qBlocks} $\to$
+\code{ConsolidateBlocks} $\to$ \code{UnitarySynthesis} làm đúng việc này, và trên mạch thử nghiệm đã
+giảm tổng số cổng \textbf{36\%} (144 $\to$ 92 cổng).
+
+\paragraph{Approximate synthesis -- Clifford+T và T-count.} Trên máy tính lượng tử chịu lỗi, mạch
+chạy trên qubit logic của một mã sửa lỗi, và mã đó chỉ thực hiện được một tập cổng rời rạc, thường là
+Clifford+T:
+\begin{itemize}[noitemsep]
+  \item Nhóm \textbf{Clifford} ($H$, $S$, CX) có cài đặt chịu lỗi rẻ. Nhưng theo định lý
+    \textbf{Gottesman--Knill} \cite{gottesman1998}, mạch chỉ gồm Clifford mô phỏng được hiệu quả bằng
+    máy tính cổ điển -- nên Clifford một mình không thể có lợi thế lượng tử.
+  \item Thêm cổng $T$ thì tập trở thành universal. Nhưng $T$ phải thực hiện qua \textbf{magic state
+    distillation} \cite{bravyi2005magic}, tốn rất nhiều qubit vật lý và chu kỳ cho \emph{mỗi} cổng.
+\end{itemize}
+Vì vậy trên máy chịu lỗi, hàm cost chính là \textbf{T-count}. Định lý \textbf{Solovay--Kitaev}
+\cite{dawson2006sk} bảo đảm mọi unitary một qubit xấp xỉ được tới sai số $\epsilon$ bằng
+$O(\log^c(1/\epsilon))$ cổng, nhưng hằng số rất tệ. Thuật toán của \textbf{Ross--Selinger}
+\cite{ross2016gridsynth} (plugin \code{gridsynth} trong Qiskit) xấp xỉ phép quay $R_Z$ với T-count
+khoảng $3\log_2(1/\epsilon) + O(\log\log(1/\epsilon))$, tối ưu khi không dùng ancilla. Bảng~\ref{tab:tcount}
+so sánh hai phương pháp \emph{ở cùng mức sai số thực tế} -- điều kiện cần cho một so sánh công bằng.
+
+\begin{table}[h]
+  \centering
+  \caption{T-count khi xấp xỉ cùng một phép quay một qubit bằng Clifford+T. Sai số là khoảng cách
+  toán tử \emph{đo thực tế} trên mạch tổng hợp ra.}
+  \label{tab:tcount}
+  \small
+  \begin{tabular}{@{}lccc@{}}
+    \toprule
+    \textbf{Phương pháp} & \textbf{T-count} & \textbf{Tổng số cổng} & \textbf{Sai số} \\
+    \midrule
+    \code{gridsynth}, $\epsilon=10^{-1}$ & 18 & 60 & $9.4\times10^{-2}$ \\
+    Solovay--Kitaev, bậc đệ quy 1 & 30 & 56 & $4.0\times10^{-2}$ \\
+    Solovay--Kitaev, bậc đệ quy 2 & 120 & 216 & $2.5\times10^{-2}$ \\
+    \code{gridsynth}, $\epsilon=10^{-2}$ & 40 & 104 & $7.3\times10^{-3}$ \\
+    Solovay--Kitaev, bậc đệ quy 3 & 478 & 874 & $2.5\times10^{-3}$ \\
+    \code{gridsynth}, $\epsilon=10^{-3}$ & \textbf{66} & 170 & $\mathbf{9.7\times10^{-4}}$ \\
+    \code{gridsynth}, $\epsilon=10^{-4}$ & 84 & 220 & $8.6\times10^{-5}$ \\
+    \midrule
+    Solovay--Kitaev bậc 3 + \code{OptimizeCliffordT} & 316 & 747 & $2.5\times10^{-3}$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Ở sai số khoảng $2.5\times10^{-3}$, Solovay--Kitaev cần 478 cổng $T$ trong khi \code{gridsynth} chỉ
+cần 66 cổng $T$ mà còn đạt sai số tốt hơn -- \textbf{tiết kiệm hơn 7 lần}. Sau khi tổng hợp, mạch
+Clifford+T vẫn còn dư: các cổng $T$ và Clifford giao hoán theo những luật nhất định, nên đẩy các cổng
+qua nhau có thể làm hai cổng $T$ gặp nhau ($T\cdot T = S$, mà $S$ là Clifford). Pass
+\code{OptimizeCliffordT} khai thác điều này và giảm T-count \textbf{34\%} mà giữ nguyên sai số. Tìm
+chuỗi rewrite tốt nhất trong không gian các luật như vậy là một bài toán tìm kiếm -- chính là hướng
+của AlphaTensor-Quantum \cite{ruiz2025alphatensor} và các phương pháp RL trên ZX-calculus
+\cite{riu2025zx}.
+
+\begin{warnbox}[Bẫy: tham số bị bỏ qua im lặng]
+Plugin synthesis gọi qua \code{transpile(..., unitary\_synthesis\_method="gridsynth")} chỉ tác dụng
+lên \code{UnitaryGate}. Nếu đầu vào là một cổng \code{rz} thường, \code{BasisTranslator} dịch nó bằng
+luật cố định \emph{trước khi} plugin được gọi, và tham số \code{epsilon} bị bỏ qua: T-count giữ
+nguyên 127 cho mọi $\epsilon$ từ $10^{-1}$ tới $10^{-6}$. Bảng số liệu trông hợp lý nhưng vô nghĩa.
+Cách tự bảo vệ: \textbf{luôn đo sai số thực} của mạch tổng hợp ra thay vì tin tham số đầu vào.
+\end{warnbox}
+
+%--------------------------------------------------------------
+\subsection{Tự viết pass và tích hợp vào pipeline}
+\label{sec:custompass}
+
+Một phương pháp biên dịch mới -- kể cả một RL agent -- muốn chạy trong Qiskit thì cuối cùng phải đóng
+gói thành một \code{TransformationPass}. Đoạn mã~\ref{lst:pass} là một pass hoàn chỉnh huỷ hai SWAP
+liên tiếp trên cùng cặp qubit (đúng vì $\mathrm{SWAP}^2 = I$). Hai chi tiết dễ sai: phải so sánh
+\emph{tập} qubit (\code{swap(1,2)} và \code{swap(2,1)} là cùng một cổng), và hai SWAP phải kề nhau
+\emph{trên DAG} trên cả hai qubit, không chỉ gần nhau trong danh sách lệnh.
+
+\begin{lstlisting}[caption={Một \code{TransformationPass} huỷ các cặp SWAP kề nhau trên DAG.}, label={lst:pass}]
+from qiskit.transpiler.basepasses import TransformationPass
+from qiskit.dagcircuit import DAGOpNode
+
+class CancelAdjacentSwaps(TransformationPass):
+    def run(self, dag):
+        for node in list(dag.topological_op_nodes()):
+            if node.name != "swap" or node not in dag.op_nodes():
+                continue
+            succ = [s for s in dag.successors(node) if isinstance(s, DAGOpNode)]
+            # the next gate on BOTH wires must be the same SWAP node
+            if (len(succ) == 1 and succ[0].name == "swap"
+                    and set(succ[0].qargs) == set(node.qargs)
+                    and len(list(dag.successors(node))) == 1):
+                dag.remove_op_node(succ[0])
+                dag.remove_op_node(node)
+        return dag
+\end{lstlisting}
+
+Có hai cách gắn pass vào pipeline: dựng một \code{PassManager([...])} riêng, hoặc \textbf{thay một
+stage} của preset pass manager, ví dụ \code{pm.routing = PassManager([MyRouter(cm)])}. Cách thứ hai
+giữ nguyên toàn bộ phần còn lại (translation, optimization, scheduling) và chỉ đổi phần cần nghiên cứu
+-- đây là cách một RL router sẽ được tích hợp. Pass mới luôn phải được kiểm tra tính đúng bằng
+\code{Operator}: \emph{một pass sai luôn ``thắng'' benchmark}.
