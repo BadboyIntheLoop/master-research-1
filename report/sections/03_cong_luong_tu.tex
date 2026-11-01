@@ -137,25 +137,84 @@ CX là cổng tạo \emph{tương quan} giữa hai qubit, và cũng là cổng k
 Vì vậy \textbf{số cổng CX là thước đo chi phí chính} của một mạch -- ý này sẽ xuất hiện lại ở mọi phần
 của Mục~\ref{sec:compilation}.
 
-\paragraph{Các cổng khác.} Bảng~\ref{tab:mq} liệt kê các cổng nhiều qubit thường dùng. Một quan hệ
-đáng nhớ: kẹp $H$ lên target trước và sau CX thì được CZ, tức $\mathrm{CZ} = (I\otimes H)\,\mathrm{CX}\,(I\otimes H)$
-(viết theo thứ tự qubit control $\otimes$ target). Một cổng bất kỳ có thể được biến thành cổng
-controlled bằng \code{.to\_gate().control(n)}.
+Các ma trận dưới đây viết theo thứ tự giáo trình (control $\otimes$ target, cơ sở
+$\ket{00},\ket{01},\ket{10},\ket{11}$); ma trận Qiskit in ra sẽ khác do quy ước little-endian
+(Mục~\ref{sec:endian}).
+
+\paragraph{CZ.} Thêm dấu $-$ khi cả hai qubit bằng 1:
+\begin{equation}
+  \mathrm{CZ}\ket{a}\ket{b} = (-1)^{ab}\ket{a}\ket{b}, \qquad \mathrm{CZ} = \mathrm{diag}(1,1,1,-1).
+\end{equation}
+CZ \textbf{đối xứng}: không phân biệt control và target. Kẹp $H$ lên target trước và sau CX thì
+được CZ: $\mathrm{CZ} = (I\otimes H)\,\mathrm{CX}\,(I\otimes H)$.
+
+\paragraph{SWAP.} Đổi chỗ trạng thái hai qubit, $\mathrm{SWAP}\ket{a}\ket{b} = \ket{b}\ket{a}$, và
+được phân rã thành 3 CX đổi chiều xen kẽ (Hình~\ref{fig:swap}). SWAP là công cụ chính của
+routing (Mục~\ref{sec:compilation}): mỗi SWAP chèn thêm tốn 3 CX.
+
+\begin{figure}[h]
+  \centering
+  \begin{quantikz}[row sep=0.3cm, column sep=0.4cm]
+    & \swap{1} & \\
+    & \targX{} &
+  \end{quantikz}
+  \;$=$\;
+  \begin{quantikz}[row sep=0.3cm, column sep=0.4cm]
+    & \ctrl{1} & \targ{}   & \ctrl{1} & \\
+    & \targ{}  & \ctrl{-1} & \targ{}  &
+  \end{quantikz}
+  \caption{SWAP phân rã thành 3 CX.}
+  \label{fig:swap}
+\end{figure}
+
+\paragraph{Cổng controlled tổng quát.} Với cổng một qubit $U$ bất kỳ, cổng controlled-$U$ áp $U$
+lên target khi và chỉ khi control bằng 1:
+\begin{equation}
+  \mathrm{C}U = \ket{0}\!\bra{0}\otimes I + \ket{1}\!\bra{1}\otimes U =
+  \begin{pmatrix} I & 0 \\ 0 & U \end{pmatrix}.
+\end{equation}
+Nếu control ở trạng thái superposition thì $U$ được áp ``có điều kiện'' trên từng nhánh, và đây là
+nguồn gốc của phase kickback (Mục~\ref{sec:algorithms}). Mọi C$U$ đều phân rã được thành tối đa
+2 CX cùng các cổng một qubit \cite{barenco1995}. Các trường hợp thường gặp:
+\begin{itemize}[noitemsep]
+  \item \textbf{CH} (\code{qc.ch(c, t)}): $U = H$; dùng để tạo superposition có điều kiện.
+  \item \textbf{CRX} (\code{qc.crx(theta, c, t)}): $U = R_X(\theta)$; tương tự có CRY, CRZ. Dùng
+    nhiều trong mạch tham số hoá (variational circuit).
+  \item \textbf{CP} (\code{qc.cp(lam, a, b)}): $U = P(\lambda)$, tức
+    $\mathrm{CP}(\lambda) = \mathrm{diag}(1,1,1,e^{i\lambda})$. Giống CZ, CP đối xứng, và
+    $\mathrm{CZ} = \mathrm{CP}(\pi)$. Đây là cổng cơ bản của Quantum Fourier Transform.
+\end{itemize}
+Trong Qiskit, một mạch con bất kỳ có thể biến thành cổng controlled bằng
+\code{.to\_gate()} rồi \code{.control(n)}.
+
+\paragraph{Toffoli (CCX).} Hai control, một target; lật target khi cả hai control bằng 1:
+\begin{equation}
+  \mathrm{CCX}\ket{c_1}\ket{c_2}\ket{t} = \ket{c_1}\ket{c_2}\ket{t \oplus c_1c_2}.
+\end{equation}
+Với $t=0$, Toffoli tính $c_1 \wedge c_2$ mà không xoá đầu vào, nên nó đủ để hiện thực mọi hàm logic
+cổ điển dưới dạng khả nghịch (dùng cho oracle ở Mục~\ref{sec:algorithms}). Toffoli không có trên
+phần cứng; phân rã chuẩn cần 6 CX, 7 cổng $T/T^\dagger$ và 2 $H$ \cite{nielsen2010}, nên một mạch
+nhiều Toffoli rất tốn kém về cả số CX lẫn T-count.
+
+Bảng~\ref{tab:mq} tóm tắt các cổng trên cùng số CX tối thiểu khi biên dịch về basis
+$\{\code{cx}, \code{u}\}$ (đo bằng \code{transpile}, \code{optimization\_level=3}).
 
 \begin{table}[h]
   \centering
   \caption{Các cổng nhiều qubit thường dùng.}
   \label{tab:mq}
   \small
-  \begin{tabular}{@{}lll@{}}
+  \begin{tabular}{@{}llcl@{}}
     \toprule
-    \textbf{Cổng} & \textbf{Qiskit} & \textbf{Ý nghĩa} \\
+    \textbf{Cổng} & \textbf{Qiskit} & \textbf{Số CX} & \textbf{Ý nghĩa} \\
     \midrule
-    CX / CNOT & \code{qc.cx(c, t)} & control $=1$ thì lật target \\
-    CZ & \code{qc.cz(a, b)} & cả hai bằng 1 thì thêm dấu $-$; \textbf{đối xứng} \\
-    SWAP & \code{qc.swap(a, b)} & đổi chỗ trạng thái hai qubit; $=3$ CX \\
-    Toffoli (CCX) & \code{qc.ccx(c1, c2, t)} & hai control; đủ để làm mọi hàm logic cổ điển khả nghịch \\
-    CH, CRX, CP, \dots & \code{qc.ch}, \code{qc.crx}, \code{qc.cp} & bản controlled của cổng một qubit \\
+    CX / CNOT & \code{qc.cx(c, t)} & 1 & control $=1$ thì lật target \\
+    CZ & \code{qc.cz(a, b)} & 1 & cả hai bằng 1 thì thêm dấu $-$; đối xứng \\
+    CH & \code{qc.ch(c, t)} & 1 & control $=1$ thì áp $H$ \\
+    CRX$(\theta)$ & \code{qc.crx(theta, c, t)} & 2 & control $=1$ thì áp $R_X(\theta)$ \\
+    CP$(\lambda)$ & \code{qc.cp(lam, a, b)} & 2 & cả hai bằng 1 thì thêm phase $e^{i\lambda}$; đối xứng \\
+    SWAP & \code{qc.swap(a, b)} & 3 & đổi chỗ trạng thái hai qubit \\
+    Toffoli (CCX) & \code{qc.ccx(c1, c2, t)} & 6 & cả hai control $=1$ thì lật target \\
     \bottomrule
   \end{tabular}
 \end{table}
