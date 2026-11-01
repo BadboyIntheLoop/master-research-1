@@ -92,19 +92,20 @@ nằm \textbf{đối diện} nhau trên cầu chứ không vuông góc. Trên Bl
     \fill (0,1) circle (0.025) node[above right] {$\ket{0}$};
     \fill (0,-1) circle (0.025) node[below right] {$\ket{1}$};
     \fill (-0.42,-0.42) circle (0.025) node[left=2pt] {$\ket{+}$};
-    \fill (0.42,0.42) circle (0.02) node[above right=-1pt, black!60] {$\ket{-}$};
+    \draw[dashed, black!35] (0,0) -- (0.42,0.42);
+    \fill[black!60] (0.42,0.42) circle (0.02) node[right=1pt, black!60] {$\ket{-}$};
     \fill (1,0) circle (0.025) node[below right] {$\ket{i}$};
-    % state vector
-    \coordinate (P) at (0.55,0.62);
-    \coordinate (Pp) at (0.55,-0.18);
-    \draw[->, very thick, ProbRed] (0,0) -- (P) node[above right] {$\ket{\psi}$};
+    % state vector (front-right, away from the -x direction)
+    \coordinate (P) at (0.35,0.65);
+    \coordinate (Pp) at (0.35,-0.25);
+    \draw[->, very thick, ProbRed] (0,0) -- (P) node[above left=-1pt] {$\ket{\psi}$};
     \draw[dashed, ProbRed!70] (P) -- (Pp);
     \draw[dashed, ProbRed!70] (0,0) -- (Pp);
     % angles
-    \draw[OkGreen, thick] (0,0.35) arc (90:48:0.35);
-    \node[OkGreen] at (0.15,0.5) {$\theta$};
-    \draw[Purple, thick] (-0.2,-0.2) arc (225:340:0.28 and 0.12);
-    \node[Purple] at (0.08,-0.33) {$\varphi$};
+    \draw[OkGreen, thick] (0,0.32) arc (90:62:0.32);
+    \node[OkGreen] at (0.08,0.45) {$\theta$};
+    \draw[Purple, thick] (-0.2,-0.2) arc (225:325:0.28 and 0.12);
+    \node[Purple] at (0.05,-0.38) {$\varphi$};
   \end{tikzpicture}
   \caption{Bloch sphere. Trạng thái $\ket{\psi}$ ở phương trình~\eqref{eq:bloch} ứng với điểm có
   góc cực $\theta$ và góc phương vị $\varphi$.}
