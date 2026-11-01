@@ -90,8 +90,47 @@ tăng (Mục~\ref{sec:synthesis}).
   Z = \begin{pmatrix}1&0\\0&-1\end{pmatrix}.
 \end{equation}
 $X$ là ``NOT lượng tử'' (bit flip, $\ket{0}\leftrightarrow\ket{1}$); $Z$ là phase flip
-($\ket{1}\to-\ket{1}$); $Y = iXZ$ làm cả hai. Trên Bloch sphere chúng là các phép quay $180^\circ$
-quanh trục tương ứng, và $X^2 = Y^2 = Z^2 = I$.
+($\ket{1}\to-\ket{1}$); $Y = iXZ$ làm cả hai. Cả ba đều thoả $X^2 = Y^2 = Z^2 = I$: áp hai lần thì về
+trạng thái ban đầu.
+
+\paragraph{Pauli là phép quay $180^\circ$ trên Bloch sphere.} Mỗi cổng Pauli là phép quay một nửa vòng
+($180^\circ$) quanh \textbf{trục cùng tên} của Bloch sphere (Hình~\ref{fig:bloch}): $X$ quay quanh
+trục $x$, $Y$ quanh trục $y$, $Z$ quanh trục $z$. Chính xác hơn, $X$, $Y$, $Z$ bằng các cổng quay
+$R_X(\pi)$, $R_Y(\pi)$, $R_Z(\pi)$ (định nghĩa ở dưới) sai khác global phase $i$. Một phép quay quanh
+một trục thì:
+\begin{itemize}[noitemsep]
+  \item \textbf{giữ nguyên hai điểm nằm trên trục} -- chúng là hai vector riêng của cổng, với trị riêng
+    $\pm1$. Trị riêng $-1$ chỉ là global phase nên trạng thái vật lý không đổi;
+  \item \textbf{đổi chỗ hai điểm đối diện} trên mỗi trục còn lại, vì quay $180^\circ$ đưa một điểm về
+    vị trí đối xứng qua trục quay.
+\end{itemize}
+Bảng~\ref{tab:pauli-bloch} liệt kê tác dụng của từng cổng lên sáu trạng thái nằm trên ba trục, với
+$\ket{-i} = \tfrac{1}{\sqrt2}(\ket{0} - i\ket{1})$ là điểm đối diện của $\ket{i}$ trên trục $y$.
+
+\begin{table}[h]
+  \centering
+  \caption{Tác dụng của các cổng Pauli lên sáu trạng thái trên các trục của Bloch sphere (bỏ qua
+  global phase). Cột cuối là ảnh của điểm có toạ độ Bloch $(x, y, z)$.}
+  \label{tab:pauli-bloch}
+  \small
+  \begin{tabular}{@{}cccccc@{}}
+    \toprule
+    \textbf{Cổng} & \textbf{Trục quay} & \textbf{Giữ nguyên} & \multicolumn{2}{c}{\textbf{Đổi chỗ}} & \textbf{Toạ độ Bloch} \\
+    \midrule
+    $X$ & $x$ & $\ket{+}, \ket{-}$ & $\ket{0}\leftrightarrow\ket{1}$ & $\ket{i}\leftrightarrow\ket{-i}$ & $(x, -y, -z)$ \\
+    $Y$ & $y$ & $\ket{i}, \ket{-i}$ & $\ket{0}\leftrightarrow\ket{1}$ & $\ket{+}\leftrightarrow\ket{-}$ & $(-x, y, -z)$ \\
+    $Z$ & $z$ & $\ket{0}, \ket{1}$ & $\ket{+}\leftrightarrow\ket{-}$ & $\ket{i}\leftrightarrow\ket{-i}$ & $(-x, -y, z)$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Đọc bảng theo hình học: $X$ lật cực bắc $\ket{0}$ xuống cực nam $\ket{1}$ (bit flip) nhưng không làm
+gì $\ket{\pm}$, vì hai điểm này nằm ngay trên trục quay $x$. Ngược lại, $Z$ giữ nguyên hai cực -- nên
+đo trong cơ sở $Z$ không thấy khác biệt gì sau cổng $Z$ -- nhưng đổi chỗ $\ket{+}\leftrightarrow\ket{-}$,
+tức đổi dấu của relative phase (Mục~\ref{sec:phase}). $Y$ là trường hợp duy nhất đổi chỗ cả hai cực
+lẫn $\ket{\pm}$. Ở mức amplitude, một số trường hợp xuất hiện thêm global phase, ví dụ
+$Y\ket{0} = i\ket{1}$ hay $X\ket{-} = -\ket{-}$; như đã phân tích ở Mục~\ref{sec:phase}, các hệ số
+này không quan sát được.
 
 \paragraph{Hadamard.}
 \begin{equation}
