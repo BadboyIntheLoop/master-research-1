@@ -214,6 +214,14 @@ Khi ghép $n$ qubit bằng tích tensor, phải chọn qubit nào đứng \emph{
     \textbf{bên phải}.
 \end{itemize}
 
+Ở cả hai quy ước, thứ tự viết trong ket luôn trùng với thứ tự các thừa số của tích Kronecker từ trái
+sang phải; chỉ có việc qubit nào đứng trái là khác nhau. Nói gọn: \textbf{trong Qiskit, qubit có chỉ
+số lớn hơn đứng trước} (bên trái), cả trong ket lẫn trong tích tensor. Nếu ghép theo thứ tự
+$\ket{q_0}\otimes\ket{q_1}\otimes\dots$ như giáo trình rồi đưa vào Qiskit, ta được vector bị đảo thứ tự
+qubit: với $q_0 = 1, q_1 = 0$, tích $\ket{q_1}\otimes\ket{q_0} = (0,1,0,0)^{\mathsf T}$ là đúng
+(chuỗi \code{'01'}), còn $\ket{q_0}\otimes\ket{q_1} = (0,0,1,0)^{\mathsf T}$ lại là trạng thái có
+qubit 1 bằng 1.
+
 \paragraph{Vì sao gọi là little-endian.} Mỗi ket cơ sở $\ket{q_{n-1}\dots q_1 q_0}$ ứng với một chỉ số
 nguyên $k$ trong vector trạng thái $2^n$ phần tử. Qiskit đọc chuỗi bit đó như cách viết số nhị phân
 thông thường, nên
