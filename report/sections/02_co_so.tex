@@ -128,64 +128,20 @@ tế:
 \subsection{Relative phase và global phase}
 \label{sec:phase}
 
-\paragraph{Relative phase.} Hai trạng thái $\ket{+}$ và $\ket{-}$ chỉ khác nhau ở \textbf{dấu của hệ
-số đứng trước $\ket{1}$} ($+\tfrac{1}{\sqrt2}$ so với $-\tfrac{1}{\sqrt2}$). Tổng quát, đại lượng phân
-biệt chúng là độ lệch pha $\varphi$ giữa $\beta$ và $\alpha$, gọi là \textbf{relative phase} (pha
-tương đối); dấu trừ ứng với $\varphi = \pi$, vì $e^{i\pi} = -1$. Tương tự, $\ket{i}$ có
-$\varphi = \pi/2$ vì $e^{i\pi/2} = i$. Góc $\varphi$ này chính là góc phương vị trên Bloch sphere ở
-phương trình~\eqref{eq:bloch}. Đo trong cơ sở $Z$ không phân biệt được $\ket{+}$ và $\ket{-}$, vì
-$|\beta|^2 = \tfrac12$ trong cả hai trường hợp; nhưng đổi cơ sở đo thì được: áp cổng Hadamard trước
-khi đo, vì $H\ket{+} = \ket{0}$ và $H\ket{-} = \ket{1}$. Relative phase vì vậy là đại lượng
-\textbf{quan sát được}.
+\textbf{Relative phase} (pha tương đối) là độ lệch pha $\varphi$ giữa hệ số của $\ket{1}$ và hệ số
+của $\ket{0}$ -- chính là góc phương vị trên Bloch sphere. Ví dụ $\ket{+}$ và $\ket{-}$ chỉ khác nhau
+ở dấu của hệ số trước $\ket{1}$ ($\varphi = 0$ so với $\varphi = \pi$, vì $e^{i\pi} = -1$). Đo trong
+cơ sở $Z$ không phân biệt được chúng, nhưng thêm $H$ trước khi đo thì được, vì $H\ket{+} = \ket{0}$
+và $H\ket{-} = \ket{1}$. Relative phase vì vậy \textbf{quan sát được}.
 
-\paragraph{Global phase.} \textbf{Global phase} (pha toàn cục) là trường hợp nhân \emph{cả} vector
-trạng thái -- tức \emph{mọi} amplitude cùng lúc -- với cùng một hệ số $e^{i\gamma}$:
-\begin{equation}
-  \ket{\psi'} = e^{i\gamma}\ket{\psi} = e^{i\gamma}\alpha\ket{0} + e^{i\gamma}\beta\ket{1}.
-  \label{eq:global}
-\end{equation}
-Vì mọi amplitude bị quay pha như nhau, độ lệch pha giữa chúng -- relative phase -- không đổi. Hai
-lập luận cho thấy global phase \textbf{không thể quan sát được} bằng bất kỳ thí nghiệm nào:
-\begin{enumerate}[noitemsep]
-  \item \textbf{Mọi phép đo cho cùng phân bố xác suất.} Với phép đo trong một cơ sở trực chuẩn bất kỳ
-    $\{\ket{\phi_k}\}$ (không chỉ cơ sở $Z$), quy tắc Born cho
-    \[
-      P'(k) = \big|\braket{\phi_k|\psi'}\big|^2 = |e^{i\gamma}|^2\,\big|\braket{\phi_k|\psi}\big|^2
-      = \big|\braket{\phi_k|\psi}\big|^2 = P(k),
-    \]
-    vì $|e^{i\gamma}| = 1$.
-  \item \textbf{Không cổng nào biến nó thành relative phase.} Với mọi unitary $U$,
-    $U\big(e^{i\gamma}\ket{\psi}\big) = e^{i\gamma}\,U\ket{\psi}$: hệ số $e^{i\gamma}$ đi xuyên qua cả
-    mạch mà vẫn là hệ số chung, nên đến lúc đo nó vẫn không ảnh hưởng gì (theo lập luận 1).
-\end{enumerate}
-Vì vậy $\ket{\psi}$ và $e^{i\gamma}\ket{\psi}$ là \textbf{cùng một trạng thái vật lý}. Ví dụ,
-$-\ket{-} = \tfrac{1}{\sqrt2}(-\ket{0} + \ket{1})$ chính là $\ket{-}$: cả hai hệ số đều đổi dấu, nên
-hệ số trước $\ket{1}$ vẫn ngược dấu với hệ số trước $\ket{0}$. Ngược lại, $\ket{+}$ và $\ket{-}$ là
-hai trạng thái khác nhau, vì chỉ \emph{một} hệ số đổi dấu.
-
-Global phase có ba hệ quả được dùng xuyên suốt báo cáo:
-\begin{itemize}[noitemsep]
-  \item \textbf{Bloch sphere chỉ cần hai góc.} Một qubit có hai amplitude phức (4 tham số thực); trừ
-    điều kiện chuẩn hoá và global phase, còn lại đúng 2 tham số. Đây là lý do phương
-    trình~\eqref{eq:bloch} được phép chọn hệ số của $\ket{0}$ là số thực không âm $\cos\tfrac{\theta}{2}$.
-  \item \textbf{Hai cổng sai khác global phase là cùng một cổng.} Ví dụ $R_X(\pi) = -iX$ và
-    $R_Z(\lambda) = e^{-i\lambda/2}P(\lambda)$ (Mục~\ref{sec:gates}). Kết quả mô phỏng có thể khác
-    công thức một dấu chung -- như trạng thái Bell $\ket{\Psi^-}$ xuất hiện dưới dạng
-    $\tfrac{1}{\sqrt2}(\ket{10}-\ket{01})$ -- mà vẫn đúng. Đây là lý do Qiskit phân biệt
-    \code{Operator.equiv} (bỏ qua global phase) với phép so sánh \code{==} (so từng phần tử ma trận).
-  \item \textbf{Ngoại lệ quan trọng: cổng controlled.} Global phase của một cổng $U$ không quan sát
-    được khi $U$ được áp \emph{vô điều kiện}, nhưng trở thành \emph{relative} phase khi $U$ chỉ được
-    áp lúc qubit control bằng 1. Chẳng hạn, áp $-I$ lên target có điều kiện thì chỉ thành phần
-    $\ket{1}$ của control bị đổi dấu -- tức tương đương cổng $Z$ trên control. Đây chính là cơ chế
-    phase kickback ở Mục~\ref{sec:algorithms}, và là lý do khi tổng hợp cổng controlled, compiler phải
-    theo dõi global phase (thuộc tính \code{QuantumCircuit.global\_phase} trong Qiskit) thay vì bỏ nó đi.
-\end{itemize}
-
-\begin{keybox}
-Relative phase là ``nguyên liệu'' của mọi thuật toán lượng tử: thuật toán ghi thông tin vào phase,
-rồi dùng interference (thường là cổng $H$) để biến phase thành xác suất đo được. Global phase thì không
-mang thông tin vật lý -- trừ khi nó bị ``gắn điều kiện'' qua một cổng controlled.
-\end{keybox}
+\textbf{Global phase} (pha toàn cục) là nhân \emph{mọi} amplitude với cùng một hệ số $e^{i\gamma}$. Nó
+\textbf{không quan sát được}: mọi xác suất đo đều nhân với $|e^{i\gamma}|^2 = 1$, và mọi cổng chỉ
+mang hệ số đó đi theo ($Ue^{i\gamma}\ket{\psi} = e^{i\gamma}U\ket{\psi}$). Vì vậy $\ket{\psi}$ và
+$e^{i\gamma}\ket{\psi}$ là cùng một trạng thái vật lý -- ví dụ $-\ket{-}$ chính là $\ket{-}$. Hệ quả:
+hai cổng sai khác global phase là cùng một cổng (như $R_X(\pi) = -iX$), và Qiskit có
+\code{Operator.equiv} để so sánh bỏ qua global phase. Ngoại lệ duy nhất là khi cổng được áp
+\emph{có điều kiện} (cổng controlled): lúc đó global phase của cổng trở thành relative phase -- đây
+chính là cơ chế phase kickback ở Mục~\ref{sec:algorithms}.
 
 \subsection{Hệ nhiều qubit và tích tensor}
 
@@ -203,78 +159,23 @@ máy tính lượng tử, vừa là lý do mô phỏng cổ điển nhanh chóng
 \subsection{Quy ước thứ tự qubit trong Qiskit (little-endian)}
 \label{sec:endian}
 
-Khi ghép $n$ qubit bằng tích tensor, phải chọn qubit nào đứng \emph{trái} và qubit nào đứng
-\emph{phải} trong ket. Có hai quy ước, và Qiskit dùng quy ước \emph{ngược} với phần lớn giáo trình:
-\begin{itemize}[noitemsep]
-  \item \textbf{Giáo trình} (Nielsen \& Chuang \cite{nielsen2010}): viết $\ket{q_0 q_1 \dots q_{n-1}}$
-    và $\ket{\psi} = \ket{\psi_0}\otimes\ket{\psi_1}\otimes\dots\otimes\ket{\psi_{n-1}}$ -- qubit 0
-    đứng \textbf{bên trái}.
-  \item \textbf{Qiskit}: viết $\ket{q_{n-1}\dots q_1 q_0}$ và
-    $\ket{\psi} = \ket{\psi_{n-1}}\otimes\dots\otimes\ket{\psi_1}\otimes\ket{\psi_0}$ -- qubit 0 đứng
-    \textbf{bên phải}.
-\end{itemize}
-
-Ở cả hai quy ước, thứ tự viết trong ket luôn trùng với thứ tự các thừa số của tích Kronecker từ trái
-sang phải; chỉ có việc qubit nào đứng trái là khác nhau. Nói gọn: \textbf{trong Qiskit, qubit có chỉ
-số lớn hơn đứng trước} (bên trái), cả trong ket lẫn trong tích tensor. Nếu ghép theo thứ tự
-$\ket{q_0}\otimes\ket{q_1}\otimes\dots$ như giáo trình rồi đưa vào Qiskit, ta được vector bị đảo thứ tự
-qubit: với $q_0 = 1, q_1 = 0$, tích $\ket{q_1}\otimes\ket{q_0} = (0,1,0,0)^{\mathsf T}$ là đúng
-(chuỗi \code{'01'}), còn $\ket{q_0}\otimes\ket{q_1} = (0,0,1,0)^{\mathsf T}$ lại là trạng thái có
-qubit 1 bằng 1.
-
-\paragraph{Vì sao gọi là little-endian.} Mỗi ket cơ sở $\ket{q_{n-1}\dots q_1 q_0}$ ứng với một chỉ số
-nguyên $k$ trong vector trạng thái $2^n$ phần tử. Qiskit đọc chuỗi bit đó như cách viết số nhị phân
-thông thường, nên
+Giáo trình \cite{nielsen2010} viết $\ket{q_0 q_1\dots q_{n-1}} = \ket{q_0}\otimes\dots\otimes\ket{q_{n-1}}$
+(qubit 0 bên trái). Qiskit làm ngược lại:
 \begin{equation}
-  k = \sum_{i=0}^{n-1} q_i\, 2^i = q_0\cdot 2^0 + q_1\cdot 2^1 + \dots + q_{n-1}\cdot 2^{n-1}.
+  \ket{q_{n-1}\dots q_1 q_0} = \ket{q_{n-1}}\otimes\dots\otimes\ket{q_1}\otimes\ket{q_0},
+  \qquad k = \sum_{i} q_i\,2^i,
   \label{eq:endian}
 \end{equation}
-Qubit 0 là \textbf{bit có trọng số thấp nhất} (least significant bit) của chỉ số $k$ -- giống thứ tự
-byte ``little-endian'' trong kiến trúc máy tính, nơi phần có trọng số thấp đứng trước. Hệ quả là
-qubit 0 xuất hiện ở \textbf{ký tự bên phải cùng} của mọi chuỗi bit mà Qiskit in ra.
-
-\paragraph{Ví dụ.} Mạch 3 qubit, chỉ áp $X$ lên qubit 0:
+tức \textbf{qubit có chỉ số lớn đứng trước}, và qubit 0 là bit thấp nhất của chỉ số $k$ trong vector
+trạng thái -- nên gọi là \emph{little-endian}. Hệ quả thực tế:
 \begin{itemize}[noitemsep]
-  \item Qiskit trả về trạng thái $\ket{001}$, tức chỉ số $k = 1$; vector trạng thái là
-    $(0,1,0,0,0,0,0,0)^{\mathsf T}$, và counts là \code{\{'001': ...\}}.
-  \item Giáo trình viết cùng trạng thái đó là $\ket{100}$.
+  \item Qubit 0 là \textbf{ký tự bên phải cùng} của mọi chuỗi kết quả: chỉ áp $X$ lên qubit 0 của mạch
+    3 qubit cho \code{'001'} (giáo trình viết $\ket{100}$).
+  \item Ma trận cổng nhiều qubit khác giáo trình: \code{qc.cx(0, 1)} đổi chỗ
+    $\ket{01}\leftrightarrow\ket{11}$ chứ không phải $\ket{10}\leftrightarrow\ket{11}$.
+  \item Ghép trạng thái phải viết \code{q1.tensor(q0)}; muốn đổi sang thứ tự giáo trình thì dùng
+    \code{reverse\_bits()} hoặc đảo chuỗi kết quả (\code{s[::-1]}).
 \end{itemize}
-Hai cách viết mô tả \emph{cùng một} trạng thái vật lý; chỉ có thứ tự ghi các qubit là khác nhau.
-Tương tự, áp $H$ lên qubit 0 của mạch 2 qubit cho $\tfrac{1}{\sqrt2}(\ket{00}+\ket{01})$ theo Qiskit
-(vector $(1,1,0,0)^{\mathsf T}/\sqrt2$), nhưng là $\tfrac{1}{\sqrt2}(\ket{00}+\ket{10})$ theo giáo trình.
-
-\paragraph{Ảnh hưởng tới ma trận cổng.} Vì thứ tự tensor bị đảo, ma trận của cổng nhiều qubit trong
-Qiskit khác ma trận trong giáo trình. Cổng $H$ trên qubit 0 có ma trận $I\otimes H$ (qubit 0 là thừa
-số bên phải). Cổng CX với control là qubit 0 và target là qubit 1 (\code{qc.cx(0, 1)}) có ma trận
-\[
-  \mathrm{CX}^{\text{Qiskit}}_{0\to1} =
-  \begin{pmatrix}1&0&0&0\\0&0&0&1\\0&0&1&0\\0&1&0&0\end{pmatrix}
-  \qquad\text{thay vì}\qquad
-  \mathrm{CX}^{\text{giáo trình}} =
-  \begin{pmatrix}1&0&0&0\\0&1&0&0\\0&0&0&1\\0&0&1&0\end{pmatrix}.
-\]
-Ma trận của Qiskit đổi chỗ $\ket{01}\leftrightarrow\ket{11}$ (các trạng thái có $q_0 = 1$), còn ma
-trận giáo trình đổi chỗ $\ket{10}\leftrightarrow\ket{11}$ (các trạng thái có qubit đứng trái bằng 1).
-Cả hai đều đúng theo quy ước của mình.
-
-\paragraph{Ảnh hưởng tới kết quả đo.} Chuỗi counts có dạng $c_{n-1}\dots c_1 c_0$: bit cổ điển 0 đứng
-bên phải. Ví dụ, đo mạch 3 qubit đã áp $X$ lên qubit 0 và 1 (với \code{measure([0,1,2],[0,1,2])}) cho
-chuỗi \code{'011'}. Lưu ý rằng khi \emph{vẽ} mạch, Qiskit lại đặt qubit 0 ở dòng \emph{trên cùng} --
-nên thứ tự từ trên xuống trong hình vẽ ngược với thứ tự từ trái sang phải trong chuỗi kết quả.
-
-\paragraph{Cách làm việc an toàn.}
-\begin{itemize}[noitemsep]
-  \item Khi đọc kết quả, ký tự thứ $i$ \emph{tính từ bên phải} (\code{s[-1-i]} trong Python) là giá trị
-    của qubit/bit cổ điển $i$. Muốn đọc theo thứ tự giáo trình thì đảo chuỗi (\code{s[::-1]}).
-  \item Khi so sánh với công thức trong giáo trình, dùng \code{QuantumCircuit.reverse\_bits()} (đảo thứ
-    tự qubit của mạch) hoặc \code{Statevector.reverse\_qargs()}: mạch ở ví dụ trên sau
-    \code{reverse\_bits()} cho đúng \code{'100'}.
-  \item Khi ghép trạng thái bằng tích tensor trong Qiskit, phải viết \code{q1.tensor(q0)} (qubit có chỉ
-    số lớn đứng trước).
-\end{itemize}
-Quy ước này xuất hiện ở mọi thuật toán của Mục~\ref{sec:algorithms}: ký tự cuối của chuỗi bí mật $s$
-trong Bernstein--Vazirani ứng với qubit 0, và chuỗi kết quả của superdense coding bị đảo so với thứ tự
-viết tin nhắn.
 
 \begin{table}[h]
   \centering
