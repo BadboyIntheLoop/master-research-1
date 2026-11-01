@@ -29,6 +29,7 @@ Hai vector $\ket{0}, \ket{1}$ trực giao ($\braket{0|1} = 0$) và có chuẩn b
 toán, còn gọi là cơ sở $Z$). Trong Qiskit, mọi qubit luôn được khởi tạo ở $\ket{0}$.
 
 \subsection{Superposition và quy tắc Born}
+\label{sec:born}
 
 Trạng thái tổng quát của một qubit là tổ hợp tuyến tính có chuẩn hoá của hai trạng thái cơ sở:
 \begin{equation}
@@ -37,8 +38,11 @@ Trạng thái tổng quát của một qubit là tổ hợp tuyến tính có ch
   \label{eq:superposition}
 \end{equation}
 Các hệ số $\alpha, \beta$ gọi là \textbf{amplitude} (biên độ xác suất). Khi đo trong cơ sở $Z$, theo
-\textbf{quy tắc Born}, kết quả là $0$ với xác suất $P(0) = |\alpha|^2 = |\braket{0|\psi}|^2$ và là
-$1$ với xác suất $P(1) = |\beta|^2$. Điều kiện chuẩn hoá bảo đảm tổng xác suất bằng 1.
+\textbf{quy tắc Born}, phép đo trả về \textbf{bit cổ điển} $0$ với xác suất
+$P(0) = |\alpha|^2 = |\braket{0|\psi}|^2$, và khi đó qubit chuyển về trạng thái $\ket{0}$; hoặc trả
+về bit $1$ với xác suất $P(1) = |\beta|^2$, và qubit chuyển về $\ket{1}$. Cần phân biệt
+\textbf{kết quả đo} (một bit cổ điển, ví dụ chuỗi \code{'0'} trong counts của Qiskit) với
+\textbf{trạng thái sau khi đo} (vector $\ket{0}$). Điều kiện chuẩn hoá bảo đảm tổng xác suất bằng 1.
 
 Ba trạng thái superposition thường gặp:
 \begin{equation}
@@ -53,8 +57,8 @@ trạng thái -- sự khác biệt nằm ở \emph{phase} của amplitude (Mục
 \begin{keybox}
 Superposition \textbf{không} có nghĩa là ``qubit vừa là 0 vừa là 1'' theo nghĩa cổ điển. Nó có nghĩa
 là trạng thái là một vector có hai thành phần phức, và hai thành phần này có thể \emph{giao thoa}
-(cộng dồn hoặc triệt tiêu) với nhau dưới tác dụng của các cổng. Interference mới là nguồn gốc lợi thế
-của thuật toán lượng tử.
+(interference) với nhau dưới tác dụng của các cổng: cộng dồn hoặc triệt tiêu lẫn nhau. Chính sự giao
+thoa này mới là nguồn gốc lợi thế của thuật toán lượng tử.
 \end{keybox}
 
 \subsection{Bloch sphere}
@@ -109,8 +113,9 @@ nằm \textbf{đối diện} nhau trên cầu chứ không vuông góc. Trên Bl
 
 \subsection{Phép đo và collapse}
 
-Phép đo trong cơ sở $Z$ trả về $0$ hoặc $1$ theo quy tắc Born, và sau phép đo trạng thái
-\textbf{collapse} (sụp đổ) về đúng ket tương ứng với kết quả. Hệ quả thực tế:
+Như đã nêu ở Mục~\ref{sec:born}, sau phép đo trạng thái \textbf{collapse} (sụp đổ) về đúng ket
+tương ứng với bit đo được: kết quả $0$ ứng với $\ket{0}$, kết quả $1$ ứng với $\ket{1}$. Hệ quả thực
+tế:
 \begin{itemize}[noitemsep]
   \item Một lần đo \textbf{không} cho biết $\alpha, \beta$. Muốn ước lượng phân bố xác suất phải chuẩn
     bị lại trạng thái và đo nhiều lần; mỗi lần gọi là một \textbf{shot}.
