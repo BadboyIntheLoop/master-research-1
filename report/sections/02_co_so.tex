@@ -200,11 +200,73 @@ Tổng quát, $n$ qubit cần $2^n$ amplitude: $\ket{\psi} = \sum_{x \in \{0,1\}
 $\sum_x |c_x|^2 = 1$. Không gian trạng thái tăng theo \emph{hàm mũ} -- đây vừa là nguồn sức mạnh của
 máy tính lượng tử, vừa là lý do mô phỏng cổ điển nhanh chóng trở nên bất khả thi.
 
-\paragraph{Quy ước little-endian của Qiskit.} Qiskit viết trạng thái theo thứ tự
-$\ket{q_{n-1}\dots q_1 q_0}$, tức \textbf{qubit 0 là ký tự bên phải cùng} trong chuỗi kết quả. Ví dụ
-với 3 qubit, chỉ lật qubit 0 thì kết quả đọc là \code{001}, không phải \code{100}. Quy ước này ảnh
-hưởng tới cách viết tích tensor (\code{q1.tensor(q0)}) và cách đọc kết quả của mọi thuật toán ở
-Mục~\ref{sec:algorithms}.
+\subsection{Quy ước thứ tự qubit trong Qiskit (little-endian)}
+\label{sec:endian}
+
+Khi ghép $n$ qubit bằng tích tensor, phải chọn qubit nào đứng \emph{trái} và qubit nào đứng
+\emph{phải} trong ket. Có hai quy ước, và Qiskit dùng quy ước \emph{ngược} với phần lớn giáo trình:
+\begin{itemize}[noitemsep]
+  \item \textbf{Giáo trình} (Nielsen \& Chuang \cite{nielsen2010}): viết $\ket{q_0 q_1 \dots q_{n-1}}$
+    và $\ket{\psi} = \ket{\psi_0}\otimes\ket{\psi_1}\otimes\dots\otimes\ket{\psi_{n-1}}$ -- qubit 0
+    đứng \textbf{bên trái}.
+  \item \textbf{Qiskit}: viết $\ket{q_{n-1}\dots q_1 q_0}$ và
+    $\ket{\psi} = \ket{\psi_{n-1}}\otimes\dots\otimes\ket{\psi_1}\otimes\ket{\psi_0}$ -- qubit 0 đứng
+    \textbf{bên phải}.
+\end{itemize}
+
+\paragraph{Vì sao gọi là little-endian.} Mỗi ket cơ sở $\ket{q_{n-1}\dots q_1 q_0}$ ứng với một chỉ số
+nguyên $k$ trong vector trạng thái $2^n$ phần tử. Qiskit đọc chuỗi bit đó như cách viết số nhị phân
+thông thường, nên
+\begin{equation}
+  k = \sum_{i=0}^{n-1} q_i\, 2^i = q_0\cdot 2^0 + q_1\cdot 2^1 + \dots + q_{n-1}\cdot 2^{n-1}.
+  \label{eq:endian}
+\end{equation}
+Qubit 0 là \textbf{bit có trọng số thấp nhất} (least significant bit) của chỉ số $k$ -- giống thứ tự
+byte ``little-endian'' trong kiến trúc máy tính, nơi phần có trọng số thấp đứng trước. Hệ quả là
+qubit 0 xuất hiện ở \textbf{ký tự bên phải cùng} của mọi chuỗi bit mà Qiskit in ra.
+
+\paragraph{Ví dụ.} Mạch 3 qubit, chỉ áp $X$ lên qubit 0:
+\begin{itemize}[noitemsep]
+  \item Qiskit trả về trạng thái $\ket{001}$, tức chỉ số $k = 1$; vector trạng thái là
+    $(0,1,0,0,0,0,0,0)^{\mathsf T}$, và counts là \code{\{'001': ...\}}.
+  \item Giáo trình viết cùng trạng thái đó là $\ket{100}$.
+\end{itemize}
+Hai cách viết mô tả \emph{cùng một} trạng thái vật lý; chỉ có thứ tự ghi các qubit là khác nhau.
+Tương tự, áp $H$ lên qubit 0 của mạch 2 qubit cho $\tfrac{1}{\sqrt2}(\ket{00}+\ket{01})$ theo Qiskit
+(vector $(1,1,0,0)^{\mathsf T}/\sqrt2$), nhưng là $\tfrac{1}{\sqrt2}(\ket{00}+\ket{10})$ theo giáo trình.
+
+\paragraph{Ảnh hưởng tới ma trận cổng.} Vì thứ tự tensor bị đảo, ma trận của cổng nhiều qubit trong
+Qiskit khác ma trận trong giáo trình. Cổng $H$ trên qubit 0 có ma trận $I\otimes H$ (qubit 0 là thừa
+số bên phải). Cổng CX với control là qubit 0 và target là qubit 1 (\code{qc.cx(0, 1)}) có ma trận
+\[
+  \mathrm{CX}^{\text{Qiskit}}_{0\to1} =
+  \begin{pmatrix}1&0&0&0\\0&0&0&1\\0&0&1&0\\0&1&0&0\end{pmatrix}
+  \qquad\text{thay vì}\qquad
+  \mathrm{CX}^{\text{giáo trình}} =
+  \begin{pmatrix}1&0&0&0\\0&1&0&0\\0&0&0&1\\0&0&1&0\end{pmatrix}.
+\]
+Ma trận của Qiskit đổi chỗ $\ket{01}\leftrightarrow\ket{11}$ (các trạng thái có $q_0 = 1$), còn ma
+trận giáo trình đổi chỗ $\ket{10}\leftrightarrow\ket{11}$ (các trạng thái có qubit đứng trái bằng 1).
+Cả hai đều đúng theo quy ước của mình.
+
+\paragraph{Ảnh hưởng tới kết quả đo.} Chuỗi counts có dạng $c_{n-1}\dots c_1 c_0$: bit cổ điển 0 đứng
+bên phải. Ví dụ, đo mạch 3 qubit đã áp $X$ lên qubit 0 và 1 (với \code{measure([0,1,2],[0,1,2])}) cho
+chuỗi \code{'011'}. Lưu ý rằng khi \emph{vẽ} mạch, Qiskit lại đặt qubit 0 ở dòng \emph{trên cùng} --
+nên thứ tự từ trên xuống trong hình vẽ ngược với thứ tự từ trái sang phải trong chuỗi kết quả.
+
+\paragraph{Cách làm việc an toàn.}
+\begin{itemize}[noitemsep]
+  \item Khi đọc kết quả, ký tự thứ $i$ \emph{tính từ bên phải} (\code{s[-1-i]} trong Python) là giá trị
+    của qubit/bit cổ điển $i$. Muốn đọc theo thứ tự giáo trình thì đảo chuỗi (\code{s[::-1]}).
+  \item Khi so sánh với công thức trong giáo trình, dùng \code{QuantumCircuit.reverse\_bits()} (đảo thứ
+    tự qubit của mạch) hoặc \code{Statevector.reverse\_qargs()}: mạch ở ví dụ trên sau
+    \code{reverse\_bits()} cho đúng \code{'100'}.
+  \item Khi ghép trạng thái bằng tích tensor trong Qiskit, phải viết \code{q1.tensor(q0)} (qubit có chỉ
+    số lớn đứng trước).
+\end{itemize}
+Quy ước này xuất hiện ở mọi thuật toán của Mục~\ref{sec:algorithms}: ký tự cuối của chuỗi bí mật $s$
+trong Bernstein--Vazirani ứng với qubit 0, và chuỗi kết quả của superdense coding bị đảo so với thứ tự
+viết tin nhắn.
 
 \begin{table}[h]
   \centering
