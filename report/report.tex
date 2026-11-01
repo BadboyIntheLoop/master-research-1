@@ -199,18 +199,25 @@ Máy tính lượng tử hứa hẹn giải một số bài toán nhanh hơn má
 hiện nay (thời kỳ \emph{NISQ} -- Noisy Intermediate-Scale Quantum) chỉ hỗ trợ một tập cổng nhỏ,
 chỉ cho phép cổng hai qubit giữa những cặp qubit kề nhau, và mọi cổng đều có sai số. Khoảng cách
 giữa mạch lý tưởng mà người lập trình viết và mạch thực sự chạy trên phần cứng được lấp đầy bởi
-\textbf{quantum compiler} (trong Qiskit gọi là \emph{transpiler}). Báo cáo này trình bày một lộ
-trình tự học có hệ thống, đi từ nền tảng tới bài toán nghiên cứu: (i) qubit, ký hiệu Dirac (ket),
-superposition, phép đo và entanglement; (ii) các cổng lượng tử một và nhiều qubit; (iii) các thuật
-toán lượng tử cơ bản xây dựng trên cơ chế \emph{phase kickback} -- Deutsch--Jozsa,
+\textbf{quantum compiler} (trong Qiskit gọi là \emph{transpiler}). Báo cáo này trình bày lý thuyết
+nền tảng của điện toán lượng tử và bài toán biên dịch mạch lượng tử, gồm: (i) qubit, ký hiệu Dirac
+(ket), superposition, phép đo và entanglement; (ii) các cổng lượng tử một và nhiều qubit; (iii) các
+thuật toán lượng tử cơ bản xây dựng trên cơ chế \emph{phase kickback} -- Deutsch--Jozsa,
 Bernstein--Vazirani, Grover -- cùng teleportation và superdense coding; (iv) quá trình biên dịch mạch
-gồm layout, routing, synthesis và tối ưu, được nhìn như một \textbf{bài toán tối ưu}. Phần cuối
-phát biểu qubit routing thành một Markov decision process, hiện thực thành môi trường
-\code{gymnasium} có kiểm tra tính đúng đắn, và dựng một thang mốc so sánh trung thực. Các thực
+gồm layout, routing, synthesis và tối ưu, được nhìn như một \textbf{bài toán tối ưu}. Trọng tâm của
+phần biên dịch là thuật toán \textbf{SABRE} (SWAP-based BidiREctional heuristic search) -- thuật toán
+layout và routing mặc định trong transpiler của Qiskit, được hiện thực bởi các pass
+\code{SabreLayout} và \code{SabreSwap}. SABRE xử lý mạch theo từng \emph{front layer} (tập cổng có
+thể thực thi ngay); khi không còn cổng nào trong front layer thực thi được vì hai qubit của nó không
+kề nhau trên phần cứng, nó chèn một SWAP được chọn bằng một hàm cost heuristic tính trên ma trận khoảng cách của coupling map, có nhìn
+trước các cổng sắp tới (\emph{lookahead}) và phạt các qubit vừa bị SWAP (\emph{decay}) để giữ depth
+thấp; đồng thời nó duyệt mạch xuôi rồi ngược nhiều lần để tinh chỉnh layout ban đầu. Phần cuối phát
+biểu qubit routing thành một Markov decision process, hiện thực thành môi trường \code{gymnasium} có
+kiểm tra tính đúng đắn, và dùng SABRE làm baseline trong một thang mốc so sánh trung thực. Các thực
 nghiệm với Qiskit~2.5 cho thấy compiler ảnh hưởng mạnh tới chất lượng mạch: topology quyết định số
-SWAP (75 trên \emph{line} so với 25 trên \emph{grid} cho cùng mạch 9 qubit), layout tốt giảm
-16\% số SWAP, thuật toán \emph{gridsynth} cần ít cổng $T$ hơn Solovay--Kitaev hơn 7 lần, và một
-policy tham lam đơn giản vẫn kém \code{SabreSwap} 25\% -- khoảng trống mà các phương pháp
+SWAP (75 trên \emph{line} so với 25 trên \emph{grid} cho cùng mạch 9 qubit), để SABRE tự chọn layout
+giảm thêm 16\% số SWAP, thuật toán \emph{gridsynth} cần ít cổng $T$ hơn Solovay--Kitaev hơn 7 lần,
+và một policy tham lam đơn giản vẫn kém \code{SabreSwap} 25\% -- khoảng trống mà các phương pháp
 reinforcement learning trong Chuyên đề nghiên cứu 2 sẽ nhắm tới.
 
 \medskip
