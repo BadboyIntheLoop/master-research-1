@@ -73,8 +73,10 @@ là đo trong cơ sở $Z$. $H$ chuyển qua lại giữa hai cơ sở này, nê
 \end{equation}
 Các cổng này chỉ thêm phase cho thành phần $\ket{1}$, tức quay quanh trục $Z$. Vì không đổi
 $|\alpha|, |\beta|$ nên đo ngay sau cổng phase không thấy khác biệt gì; phase chỉ lộ ra khi kết hợp
-với $H$. Cổng $T$ đặc biệt quan trọng ở Mục~\ref{sec:synthesis}: nó là cổng ``đắt'' nhất trên máy
-tính lượng tử chịu lỗi.
+với $H$. Cổng $T$ đặc biệt quan trọng ở Mục~\ref{sec:synthesis}: trên máy tính lượng tử chịu lỗi
+(fault-tolerant), $T$ không thể thực hiện trực tiếp mà phải dùng kỹ thuật \emph{magic state
+distillation}, tiêu tốn nhiều qubit và thời gian nhất so với các cổng khác, nên số cổng $T$
+(\emph{T-count}) là thước đo chi phí chính của mạch.
 
 \paragraph{Cổng quay.} Với góc tuỳ ý, dùng các cổng rotation
 $R_P(\theta) = e^{-i\theta P/2} = \cos\tfrac{\theta}{2}I - i\sin\tfrac{\theta}{2}P$ với
