@@ -4,17 +4,84 @@
 %==============================================================
 
 \subsection{Cổng lượng tử là ma trận unitary}
+\label{sec:unitary}
 
-Một cổng lượng tử tác dụng lên $n$ qubit là một ma trận \textbf{unitary} $U$ kích thước
-$2^n \times 2^n$, tức $U^\dagger U = I$. Áp cổng lên trạng thái chính là phép nhân ma trận:
-$\ket{\psi'} = U\ket{\psi}$. Tính unitary kéo theo hai hệ quả quan trọng:
-\begin{itemize}[noitemsep]
-  \item \textbf{Bảo toàn chuẩn} -- tổng xác suất luôn bằng 1 sau mỗi cổng.
-  \item \textbf{Luôn đảo ngược được} -- mọi cổng có nghịch đảo $U^{-1} = U^\dagger$. Không có cổng
-    lượng tử nào ``xoá'' thông tin, khác hẳn cổng AND cổ điển.
-\end{itemize}
+\begin{definition}[Ma trận unitary]
+Ma trận vuông phức $U$ gọi là \textbf{unitary} nếu
+\begin{equation}
+  U^\dagger U = U U^\dagger = I,
+  \label{eq:unitary}
+\end{equation}
+trong đó $U^\dagger = \overline{U}^{\mathsf T}$ là \textbf{liên hợp Hermite} (chuyển vị liên hợp) của
+$U$: chuyển vị ma trận rồi lấy liên hợp phức từng phần tử.
+\end{definition}
+
+Một cổng lượng tử tác dụng lên $n$ qubit là một ma trận unitary kích thước $2^n \times 2^n$, và áp cổng
+lên trạng thái chính là phép nhân ma trận: $\ket{\psi'} = U\ket{\psi}$. Điều kiện~\eqref{eq:unitary}
+nói rằng \textbf{nghịch đảo của $U$ chính là $U^\dagger$}, nên luôn tính được trực tiếp. Ví dụ với cổng
+Hadamard và cổng phase $S$:
+\[
+  H^\dagger H = \tfrac12\begin{pmatrix}1&1\\1&-1\end{pmatrix}\begin{pmatrix}1&1\\1&-1\end{pmatrix}
+  = \tfrac12\begin{pmatrix}2&0\\0&2\end{pmatrix} = I, \qquad
+  S^\dagger S = \begin{pmatrix}1&0\\0&-i\end{pmatrix}\begin{pmatrix}1&0\\0&i\end{pmatrix} = I.
+\]
+Cổng $S^\dagger$ chính là \code{sdg} trong Qiskit -- tên gọi lấy từ ``S-dagger''.
+
+\paragraph{Vì sao cổng lượng tử bắt buộc phải unitary.} Một cổng phải biến trạng thái hợp lệ thành
+trạng thái hợp lệ, tức tổng xác suất luôn bằng 1:
+\begin{equation}
+  \big\|U\ket{\psi}\big\|^2 = \bra{\psi}U^\dagger U\ket{\psi} = \braket{\psi|\psi} = 1.
+\end{equation}
+Đẳng thức này đúng với \emph{mọi} $\ket{\psi}$ khi và chỉ khi $U^\dagger U = I$. Vậy tính unitary không
+phải một giả thiết tuỳ ý: unitary chính xác là tập các phép biến đổi tuyến tính \textbf{bảo toàn xác
+suất}. Về mặt vật lý, một hệ lượng tử cô lập tiến hoá theo phương trình Schrödinger với nghiệm
+$U = e^{-i\mathcal{H}t}$, trong đó Hamiltonian $\mathcal{H}$ là một ma trận Hermite; ma trận dạng này
+luôn unitary. Thực hiện một cổng trên phần cứng chính là điều khiển Hamiltonian của hệ (bằng xung vi
+sóng, laser, \dots) trong một khoảng thời gian xác định.
+
+\begin{table}[h]
+  \centering
+  \caption{Các tính chất của ma trận unitary và ý nghĩa đối với mạch lượng tử.}
+  \label{tab:unitary}
+  \small
+  \begin{tabularx}{\linewidth}{@{}lX@{}}
+    \toprule
+    \textbf{Tính chất} & \textbf{Ý nghĩa} \\
+    \midrule
+    Bảo toàn tích trong: $\braket{U\phi|U\psi} = \braket{\phi|\psi}$ & giữ nguyên ``góc'' giữa các
+      trạng thái; hai trạng thái trực giao vẫn trực giao sau cổng \\
+    Khả nghịch: $U^{-1} = U^\dagger$ & không cổng nào ``xoá'' thông tin; \code{qc.inverse()} luôn tồn tại \\
+    Các cột (và hàng) trực chuẩn & cột thứ $j$ là $U\ket{j}$; ảnh của một cơ sở vẫn là một cơ sở \\
+    Trị riêng có môđun 1: $\lambda = e^{i\theta}$ & cổng chỉ ``quay pha'' chứ không co giãn vector \\
+    Đóng với phép nhân và tích tensor & ghép cổng nối tiếp ($UV$) hay song song ($U\otimes V$) vẫn được
+      unitary, nên cả mạch (không có phép đo) là một unitary \\
+    Viết được dưới dạng $U = e^{iA}$, $A$ Hermite & nguồn gốc của các cổng quay
+      $R_P(\theta) = e^{-i\theta P/2}$ ở Mục~\ref{sec:1q} \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\paragraph{So sánh với logic cổ điển.} Cổng AND cổ điển \textbf{không} khả nghịch: đầu ra 0 có thể đến
+từ \code{00}, \code{01} hoặc \code{10}, nên thông tin về đầu vào bị mất. Vì vậy AND không thể là một
+cổng lượng tử trực tiếp. Muốn tính một hàm cổ điển $f$ trong mạch lượng tử, phải viết lại nó ở dạng
+khả nghịch -- cổng Toffoli (một bản AND khả nghịch, Mục~\ref{sec:mq}) hoặc bit-flip oracle
+$U_f\ket{x}\ket{y} = \ket{x}\ket{y\oplus f(x)}$ ở Mục~\ref{sec:algorithms}.
+
+\paragraph{Không phải lệnh nào trong mạch cũng unitary.} Phép đo (\code{measure}) và đặt lại qubit
+(\code{reset}) làm mất thông tin nên không khả nghịch, và do đó không phải cổng unitary. Đây là lý do
+\code{Operator(qc)} và \code{Statevector(qc)} chỉ dùng được với mạch không chứa hai lệnh này. Qiskit
+cũng cho phép tạo cổng trực tiếp từ một ma trận bằng \code{UnitaryGate(M)}, và kiểm tra một ma trận
+bằng \code{Operator(M).is\_unitary()}.
+
+\paragraph{Số tham số và bài toán synthesis.} Một unitary trên $n$ qubit có $4^n$ tham số thực. Với
+một qubit là 4 tham số; bỏ global phase còn 3 -- khớp với ba góc của cổng tổng quát
+$U(\theta,\varphi,\lambda)$ ở phương trình~\eqref{eq:u3}. Với hai qubit là 16 tham số, và định lý KAK
+cho biết mọi unitary hai qubit cần tối đa 3 cổng CX. Số tham số tăng theo hàm mũ khiến việc phân tích
+một unitary tuỳ ý thành chuỗi cổng cơ bản -- bài toán \emph{synthesis} -- trở nên rất khó khi số qubit
+tăng (Mục~\ref{sec:synthesis}).
 
 \subsection{Cổng một qubit}
+\label{sec:1q}
 
 \paragraph{Nhóm Pauli.}
 \begin{equation}
@@ -94,6 +161,7 @@ $X(H\ket{\psi}) = (XH)\ket{\psi}$. Nghịch đảo của cả mạch (\code{qc.i
 cổng và lấy liên hợp Hermite từng cổng ($T^\dagger$ là \code{tdg}, $S^\dagger$ là \code{sdg}).
 
 \subsection{Cổng nhiều qubit}
+\label{sec:mq}
 
 \paragraph{CNOT (CX).} Cổng hai qubit quan trọng nhất: có một qubit \emph{control} và một qubit
 \emph{target}; nếu control bằng 1 thì lật target:
